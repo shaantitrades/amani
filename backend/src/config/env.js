@@ -1,0 +1,115 @@
+import 'dotenv/config';
+import { z } from 'zod';
+
+const bool = (def) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === '' ? def : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())));
+
+const int = (def) => z.coerce.number().int().optional().default(def);
+
+const schema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().default(4000),
+  APP_NAME: z.string().default('Bodogui'),
+  LOG_LEVEL: z.string().default('info'),
+  CORS_ORIGINS: z.string().default('http://localhost:5173'),
+  PUBLIC_WEB_URL: z.string().default('http://localhost:5173'),
+  PUBLIC_API_URL: z.string().default('http://localhost:4000'),
+
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL est obligatoire'),
+  DB_POOL_MAX: int(10),
+  REDIS_URL: z.string().default('redis://localhost:6379'),
+
+  JWT_SECRET: z.string().min(16, 'JWT_SECRET doit faire au moins 16 caracteres'),
+  JWT_TTL: z.string().default('30d'),
+  REFRESH_TTL_DAYS: int(180),
+
+  OTP_TTL_SECONDS: int(300),
+  OTP_MAX_ATTEMPTS: int(5),
+  OTP_PER_PHONE_PER_HOUR: int(5),
+  OTP_PER_IP_PER_HOUR: int(30),
+  OTP_DEV_ECHO: bool(false),
+
+  SMS_PROVIDER: z.enum(['console', 'africastalking', 'twilio']).default('console'),
+  SMS_SENDER_ID: z.string().default('BODOGUI'),
+  AFRICASTALKING_USERNAME: z.string().optional().default(''),
+  AFRICASTALKING_API_KEY: z.string().optional().default(''),
+  TWILIO_ACCOUNT_SID: z.string().optional().default(''),
+  TWILIO_AUTH_TOKEN: z.string().optional().default(''),
+  TWILIO_FROM: z.string().optional().default(''),
+
+  STORAGE_DRIVER: z.enum(['local', 'minio', 'b2']).default('local'),
+  STORAGE_LOCAL_DIR: z.string().default('./var/storage'),
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string().default('bodogui-media'),
+  S3_ACCESS_KEY_ID: z.string().optional().default(''),
+  S3_SECRET_ACCESS_KEY: z.string().optional().default(''),
+  B2_KEY_ID: z.string().optional().default(''),
+  B2_APP_KEY: z.string().optional().default(''),
+  B2_BUCKET: z.string().optional().default(''),
+  B2_REGION: z.string().optional().default(''),
+  MAX_PHOTO_BYTES: int(5 * 1024 * 1024),
+  MAX_AUDIO_BYTES: int(1024 * 1024),
+  // Documents partages dans les groupes (facture, contrat, photo de piece...)
+  MAX_FILE_BYTES: int(5 * 1024 * 1024),
+  MAX_PHOTOS_PER_AD: int(6),
+
+  IMAGE_MAX_WIDTH: int(1080),
+  IMAGE_WEBP_QUALITY: int(62),
+  IMAGE_TARGET_BYTES: int(102400),
+
+  STT_PROVIDER: z.enum(['none', 'local', 'google']).default('none'),
+  WHISPER_URL: z.string().optional().default(''),
+  GOOGLE_STT_API_KEY: z.string().optional().default(''),
+
+  VAPID_PUBLIC_KEY: z.string().optional().default(''),
+  VAPID_PRIVATE_KEY: z.string().optional().default(''),
+  VAPID_SUBJECT: z.string().default('mailto:support@bodogui.com'),
+
+  FRAUD_AUTO_HIDE_REPORTS: int(3),
+  SMS_TEMPLATES_LANGS: z.string().default('fr,ar'),
+});
+
+const parsed = schema.safeParse(process.env);
+
+if (!parsed.success) {
+  const details = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
+  // eslint-disable-next-line no-console
+  console.error(
+    `[bodogui] Configuration invalide (verifiez vos variables d'environnement / fichier .env) :\n${details}`,
+  );
+  process.exit(1);
+}
+
+const raw = parsed.data;
+
+export const env = {
+  ...raw,
+  isProd: raw.NODE_ENV === 'production',
+  isTest: raw.NODE_ENV === 'test',
+  corsOrigins: raw.CORS_ORIGINS.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+  storage: raw.STORAGE_DRIVER === 'b2'
+    ? {
+        driver: 'b2',
+        endpoint: raw.S3_ENDPOINT || (raw.B2_REGION ? `https://s3.${raw.B2_REGION}.backblazeb2.com` : undefined),
+        region: raw.B2_REGION || raw.S3_REGION,
+        bucket: raw.B2_BUCKET || raw.S3_BUCKET,
+        accessKeyId: raw.B2_KEY_ID || raw.S3_ACCESS_KEY_ID,
+        secretAccessKey: raw.B2_APP_KEY || raw.S3_SECRET_ACCESS_KEY,
+      }
+    : {
+        driver: raw.STORAGE_DRIVER,
+        endpoint: raw.S3_ENDPOINT,
+        region: raw.S3_REGION,
+        bucket: raw.S3_BUCKET,
+        accessKeyId: raw.S3_ACCESS_KEY_ID,
+        secretAccessKey: raw.S3_SECRET_ACCESS_KEY,
+      },
+};
+
+export default env;

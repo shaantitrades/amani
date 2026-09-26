@@ -1,0 +1,134 @@
+# =============================================================================
+# Bodogui - pile de production pour Coolify (VPS Contabo)
+#
+# Services :
+#   db      PostgreSQL 16 auto-heberge (reseau Docker interne, non expose)
+#   redis   Redis 7 (cache OTP, listes de blocage, rate limiting)
+#   api     API Node.js (Express)
+#   web     PWA React servie par Nginx (proxy /api et /media vers api)
+#
+# Deploiement Coolify :
+#   1. New Resource > Docker Compose > ce depot, fichier docker-compose.yml
+#   2. Renseigner les variables d'environnement (voir docs/ENVIRONMENT.md)
+#   3. Domaine : bodogui.com -> service web (port 80)
+#               api.bodogui.com -> service api (port 4000)
+#   Coolify gere le SSL Let's Encrypt et les redemarrages automatiques.
+# =============================================================================
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bodogui}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?mot de passe PostgreSQL obligatoire}
+      POSTGRES_DB: ${POSTGRES_DB:-bodogui}
+      # Optimisations pour un VPS 4 vCPU / 8 Go (MVP, faible volumetrie)
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    command: >
+      postgres
+      -c max_connections=60
+      -c shared_buffers=256MB
+      -c work_mem=8MB
+      -c maintenance_work_mem=64MB
+      -c effective_cache_size=1GB
+      -c log_min_duration_statement=1000
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-bodogui} -d ${POSTGRES_DB:-bodogui}']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER:-bodogui}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-bodogui}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obligatoire (openssl rand -hex 32)}
+      JWT_TTL: ${JWT_TTL:-30d}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL}
+      PUBLIC_API_URL: ${PUBLIC_API_URL}
+      OTP_DEV_ECHO: 'false'
+      OTP_PER_PHONE_PER_HOUR: ${OTP_PER_PHONE_PER_HOUR:-5}
+      SMS_PROVIDER: ${SMS_PROVIDER:-africastalking}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-BODOGUI}
+      AFRICASTALKING_USERNAME: ${AFRICASTALKING_USERNAME:-}
+      AFRICASTALKING_API_KEY: ${AFRICASTALKING_API_KEY:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM: ${TWILIO_FROM:-}
+      # Stockage : Backblaze B2 en production (MinIO en developpement)
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-b2}
+      S3_BUCKET: ${S3_BUCKET:-bodogui-media}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      B2_KEY_ID: ${B2_KEY_ID:-}
+      B2_APP_KEY: ${B2_APP_KEY:-}
+      B2_BUCKET: ${B2_BUCKET:-bodogui-media}
+      B2_REGION: ${B2_REGION:-eu-central-003}
+      STT_PROVIDER: ${STT_PROVIDER:-none}
+      WHISPER_URL: ${WHISPER_URL:-}
+      GOOGLE_STT_API_KEY: ${GOOGLE_STT_API_KEY:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@bodogui.com}
+      FRAUD_AUTO_HIDE_REPORTS: ${FRAUD_AUTO_HIDE_REPORTS:-3}
+    volumes:
+      - api-storage:/app/var/storage
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '80:80'
+    networks:
+      - internal
+
+volumes:
+  db-data:
+  redis-data:
+  api-storage:
+
+networks:
+  internal:
+    driver: bridge

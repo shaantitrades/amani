@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#075E54" />
+    <meta name="description" content="Bodogui - vendez et achetez pres de chez vous, avec des photos et votre voix." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>Bodogui</title>
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+
+    <!-- Palette WhatsApp : definie tot pour eviter un flash de couleur -->
+    <style>
+      :root {
+        --wa-green: #25d366;
+        --wa-green-dark: #075e54;
+        --wa-teal: #128c7e;
+        --wa-blue: #34b7f1;
+        --wa-bg: #ece5dd;
+        --wa-white: #ffffff;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--wa-bg);
+        color: #111b21;
+        font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #root {
+        min-height: 100vh;
+      }
+      .boot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        flex-direction: column;
+        gap: 12px;
+        color: var(--wa-green-dark);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="boot">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: #25d366"></div>
+        <strong>Bodogui</strong>
+      </div>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

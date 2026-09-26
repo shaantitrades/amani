@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bodogui - Maquettes Phase 1 (MVP)</title>
+    <style>
+      /* Maquettes statiques : meme palette que l'application (WhatsApp) */
+      :root {
+        --green: #25d366; --green-dark: #075e54; --teal: #128c7e;
+        --blue: #34b7f1; --bg: #ece5dd; --white: #fff; --ink: #111b21; --grey: #6b7b83;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 24px; background: #1f2c33; color: #fff;
+        font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      }
+      h1 { font-size: 1.6rem; margin: 0 0 4px; }
+      .intro { max-width: 1100px; color: #c7d3d8; margin-bottom: 20px; }
+      .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 26px; }
+      .legend span {
+        display: inline-flex; align-items: center; gap: 6px; background: #2a3942;
+        border-radius: 20px; padding: 6px 12px; font-size: 0.85rem;
+      }
+      .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+      .grid { display: flex; flex-wrap: wrap; gap: 30px; }
+      .frame { width: 320px; }
+      .frame h2 { font-size: 1rem; margin: 0 0 8px; color: #e9f5ef; }
+      .phone {
+        width: 320px; height: 600px; background: var(--bg); border: 10px solid #0b1418;
+        border-radius: 32px; overflow: hidden; display: flex; flex-direction: column;
+        color: var(--ink); font-size: 13px;
+      }
+      .status {
+        height: 18px; background: var(--green-dark); color: #fff; font-size: 9px;
+        display: flex; align-items: center; justify-content: space-between; padding: 0 8px;
+      }
+      .bar {
+        background: var(--green-dark); color: #fff; min-height: 46px; display: flex;
+        align-items: center; gap: 8px; padding: 6px 10px; font-weight: 600;
+      }
+      .bar small { font-weight: 400; opacity: 0.85; display: block; font-size: 10px; }
+      .bar .grow { flex: 1; }
+      .body { flex: 1; overflow: hidden; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+      .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .big {
+        min-height: 74px; border-radius: 14px; color: #fff; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 2px; font-weight: 700;
+        font-size: 12px; text-align: center;
+      }
+      .big .ico { font-size: 22px; }
+      .big--green { background: var(--green); }
+      .big--blue { background: var(--blue); }
+      .big--dark { background: var(--green-dark); }
+      .big--teal { background: var(--teal); }
+      .card { background: var(--white); border-radius: 12px; padding: 8px; }
+      .feed { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .ad { background: var(--white); border-radius: 10px; overflow: hidden; }
+      .ad .thumb {
+        height: 72px; background: linear-gradient(135deg, var(--teal), var(--green-dark));
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-size: 26px; position: relative;
+      }
+      .ad .kind {
+        position: absolute; top: 4px; left: 4px; background: var(--green); color: #fff;
+        border-radius: 8px; font-size: 8px; padding: 2px 6px;
+      }
+      .ad .kind--want { background: var(--blue); }
+      .ad .info { padding: 5px 7px; display: flex; flex-direction: column; gap: 2px; }
+      .ad .price { color: var(--green-dark); font-weight: 800; font-size: 13px; }
+      .ad .meta { color: var(--grey); font-size: 9.5px; }
+      .pill {
+        border: 2px solid #d7d2c8; border-radius: 18px; padding: 5px 10px; background: #fff;
+        font-size: 10.5px; font-weight: 600; white-space: nowrap;
+      }
+      .pill--on { background: var(--green-dark); border-color: var(--green-dark); color: #fff; }
+      .voice {
+        background: var(--blue); color: #fff; border-radius: 12px; min-height: 40px;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        font-weight: 700; font-size: 11px; padding: 0 8px; text-align: center;
+      }
+      .mic {
+        background: var(--green); color: #fff; border-radius: 14px; min-height: 120px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 4px; font-weight: 800;
+      }
+      .mic .ico { font-size: 34px; }
+      .action {
+        background: var(--green); color: #fff; border-radius: 12px; min-height: 46px;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        font-weight: 800; font-size: 12.5px; text-align: center; padding: 0 8px;
+      }
+      .action--blue { background: var(--blue); }
+      .action--teal { background: var(--teal); }
+      .action--grey { background: #8a9aa1; }
+      .action--danger { background: #c0392b; }
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .keypad span {
+        background: #fff; border-radius: 10px; min-height: 38px; display: flex;
+        align-items: center; justify-content: center; font-size: 17px; font-weight: 700;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+      }
+      .cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .cat {
+        background: #fff; border: 2px solid transparent; border-radius: 10px; min-height: 52px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 2px; font-size: 9px; font-weight: 600; text-align: center;
+      }
+      .cat .ico { font-size: 18px; }
+      .cat--on { border-color: var(--green); background: #f1fff7; }
+      .row { display: flex; gap: 8px; align-items: center; }
+      .bubble { background: #fff; border-radius: 12px; padding: 8px; max-width: 82%; font-size: 11px; }
+      .bubble--me { background: #dcf8c6; align-self: flex-end; }
+      .note { color: #9fb3bb; font-size: 0.82rem; margin-top: 8px; line-height: 1.5; }
+      .note strong { color: #e9f5ef; }
+      .step-dots { display: flex; gap: 5px; justify-content: center; }
+      .step-dots i { width: 9px; height: 9px; border-radius: 50%; background: #d7d2c8; }
+      .step-dots i.on { background: var(--green); }
+      footer { margin-top: 40px; color: #9fb3bb; font-size: 0.85rem; max-width: 1100px; line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <h1>Bodogui - Maquettes Phase 1 (MVP)</h1>
+    <p class="intro">
+      Ecrans cles du MVP : zero texte obligatoire, gros boutons (&ge; 60 px), retour vocal sur chaque action,
+      palette WhatsApp. Reference visuelle pour les developpeurs et les enregistreurs de voix natives.
+    </p>
+    <div class="legend">
+      <span><i class="swatch" style="background: #25d366"></i>#25D366 actions</span>
+      <span><i class="swatch" style="background: #075e54"></i>#075E54 navigation</span>
+      <span><i class="swatch" style="background: #fff"></i>#FFFFFF cartes</span>
+      <span><i class="swatch" style="background: #ece5dd"></i>#ECE5DD fond</span>
+      <span><i class="swatch" style="background: #34b7f1"></i>#34B7F1 voix</span>
+    </div>
+    <div class="grid">
+      <!-- 1. ACCUEIL -->
+      <div class="frame">
+        <h2>1. Accueil</h2>
+        <div class="phone">
+          <div class="status"><span>Bodogui</span><span>12:40</span></div>
+          <div class="bar">
+            <span class="grow">Bodogui<small>+235 66 12 34 56</small></span>
+            <span>&#128266;</span><span>&#128100;</span>
+          </div>
+          <div class="body">
+            <div class="tiles">
+              <div class="big big--green"><span class="ico">&#10133;</span>VENDRE</div>
+              <div class="big big--blue"><span class="ico">&#128269;</span>ACHETER</div>
+              <div class="big big--teal"><span class="ico">&#128101;</span>GROUPES</div>
+              <div class="big big--dark"><span class="ico">&#128100;</span>MON COMPTE</div>
+            </div>
+            <div class="row" style="justify-content: space-between; font-weight: 700; font-size: 12px">
+              <span>Pres de vous</span><span style="color: var(--green-dark)">Tout voir &rarr;</span>
+            </div>
+            <div class="feed">
+              <div class="ad">
+                <div class="thumb"><span class="kind">JE VENDS</span>&#128004;</div>
+                <div class="info"><span class="price">285 000 FCFA</span><span class="meta">&#128205; Moursal</span></div>
+              </div>
+              <div class="ad">
+                <div class="thumb"><span class="kind">JE VENDS</span>&#127949;</div>
+                <div class="info"><span class="price">415 000 FCFA</span><span class="meta">&#128205; Chagoua</span></div>
+              </div>
+              <div class="ad">
+                <div class="thumb"><span class="kind">JE VENDS</span>&#128241;</div>
+                <div class="info"><span class="price">65 000 FCFA</span><span class="meta">&#128205; Dembe</span></div>
+              </div>
+              <div class="ad">
+                <div class="thumb"><span class="kind kind--want">JE CHERCHE</span>&#128017;</div>
+                <div class="info"><span class="price">90 000 FCFA</span><span class="meta">&#128205; Klemat</span></div>
+              </div>
+            </div>
+            <div class="voice">&#128266; Ne payez jamais avant d'avoir vu le produit</div>
+          </div>
+        </div>
+        <p class="note">
+          <strong>4 tuiles geantes</strong> remplacent le menu. Le bouton &#128266; coupe ou active tous les
+          messages vocaux. Le fil affiche d'abord le quartier de l'utilisateur.
+        </p>
+      </div>
+      <!-- 2. DESCRIPTION VOCALE -->
+      <div class="frame">
+        <h2>2. Publication : description vocale (2/7)</h2>
+        <div class="phone">
+          <div class="status"><span>Bodogui</span><span>12:41</span></div>
+          <div class="bar"><span>&larr;</span><span class="grow">VENDRE<small>2/7</small></span><span>&#128266;</span></div>
+          <div class="body">
+            <div class="step-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="mic">
+              <span class="ico">&#127897;</span>
+              PARLER
+              <small style="font-weight: 500">Appuyez, parlez, relachez (max 60 s)</small>
+            </div>
+            <div class="card" style="font-size: 11px">&#9989; Photo ajoutee (3/6) &nbsp;&#128266;</div>
+            <div class="row">
+              <div class="action action--grey" style="flex: 1">&#9997;&#65039; Ecrire</div>
+              <div class="action" style="flex: 1">&#10145;&#65039; Continuer</div>
+            </div>
+            <div class="note" style="color: #44555c">
+              Le vocal est compresse en Opus (~50 Ko pour 30 s). Aucune saisie de texte n'est requise.
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          <strong>7 etapes</strong> : photos, voix, prix, lieu, categorie, vendeur/chercheur, recapitulatif.
+          Retour vocal de confirmation a chaque validation.
+        </p>
+      </div>
+
+      <!-- 3. PRIX -->
+      <div class="frame">
+        <h2>3. Prix : clavier numerique geant (3/7)</h2>
+        <div class="phone">
+          <div class="status"><span>Bodogui</span><span>12:42</span></div>
+          <div class="bar"><span>&larr;</span><span class="grow">PRIX<small>3/7</small></span><span>&#128266;</span></div>
+          <div class="body">
+            <div class="card row" style="justify-content: space-between; font-size: 19px; font-weight: 800; color: var(--green-dark)">
+              <span>285 000 FCFA</span><span>&#128266;</span>
+            </div>
+            <div class="keypad">
+              <span>1</span><span>2</span><span>3</span>
+              <span>4</span><span>5</span><span>6</span>
+              <span>7</span><span>8</span><span>9</span>
+              <span>C</span><span>0</span><span>&#9003;</span>
+            </div>
+            <div class="row" style="flex-wrap: wrap">
+              <span class="pill">5 000 F</span><span class="pill">25 000 F</span>
+              <span class="pill">50 000 F</span><span class="pill">100 000 F</span>
+            </div>
+            <div class="action">&#9989; Valider le prix</div>
+          </div>
+        </div>
+        <p class="note">
+          Touches de 72 px. Le bouton &#128266; lit le montant a voix haute. Devises : FCFA, USD, or.
+        </p>
+      </div>
+      <!-- 4. DETAIL D'ANNONCE -->
+      <div class="frame">
+        <h2>4. Detail : photos, prix, vocal, contact</h2>
+        <div class="phone">
+          <div class="status"><span>Bodogui</span><span>12:44</span></div>
+          <div class="bar"><span>&larr;</span><span class="grow">285 000 FCFA<small>Moursal</small></span><span>&#9888;&#65039;</span></div>
+          <div class="body" style="gap: 8px">
+            <div class="ad" style="border-radius: 12px">
+              <div class="thumb" style="height: 100px; font-size: 40px">&#128004;<span class="kind">JE VENDS</span></div>
+            </div>
+            <div class="row" style="justify-content: space-between">
+              <strong style="font-size: 18px; color: var(--green-dark)">285 000 FCFA</strong>
+              <span class="pill" style="font-size: 9px">A negocier</span>
+            </div>
+            <div style="font-size: 11px; color: var(--grey)">
+              Vache laitiere robuste · &#128205; Moursal · &#128065; 42 · 2 h
+            </div>
+            <div class="voice">&#9654;&#65039; Ecouter la description du vendeur</div>
+            <div class="card" style="font-size: 10.5px; background: #fff7e6; border-left: 4px solid #f0a202">
+              &#128737; Ne payez jamais avant d'avoir vu le produit.
+            </div>
+            <div style="font-size: 11px">Achta A. &#10004; &nbsp;+235 66 12 34 56</div>
+            <div class="row">
+              <div class="action" style="flex: 1">&#128222; APPELER</div>
+              <div class="action action--teal" style="flex: 1">&#128172; DISCUTER</div>
+            </div>
+            <div class="row">
+              <div class="action action--blue" style="flex: 1">&#127897; MESSAGE VOCAL</div>
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          <strong>Aucun masquage de numero</strong> : le bouton APPELER lance l'appel direct et
+          DISCUTER ouvre la conversation <em>dans Bodogui</em> (texte ou vocal) avec une accroche
+          pre-remplie qui contient le <em>lien de l'annonce</em>, sans jamais passer par
+          WhatsApp. Le blocage se propose depuis SIGNALER (&#9888;) et se gere dans
+          &laquo; Utilisateurs bloques &raquo; : annonces, messages et notifications disparaissent dans les
+          deux sens.
+        </p>
+      </div>
+
+      <!-- 5. GROUPE -->
+      <div class="frame">
+        <h2>5. Groupe de quartier</h2>
+        <div class="phone">
+          <div class="status"><span>Bodogui</span><span>12:45</span></div>
+          <div class="bar"><span>&larr;</span><span class="grow">Moursal Vente &amp; Achat<small>34 membres</small></span><span>&#128101;</span></div>
+          <div class="body">
+            <div class="row">
+              <div class="action" style="flex: 1">&#10133; ANNONCE</div>
+              <div class="action" style="flex: 1; background: var(--green-dark)">&#128101; MEMBRES</div>
+            </div>
+            <div class="feed">
+              <div class="ad">
+                <div class="thumb"><span class="kind">JE VENDS</span>&#128004;</div>
+                <div class="info"><span class="price">285 000 FCFA</span><span class="meta">&#127897; vocal · 2 h</span></div>
+              </div>
+              <div class="ad">
+                <div class="thumb"><span class="kind">JE VENDS</span>&#127949;</div>
+                <div class="info"><span class="price">415 000 FCFA</span><span class="meta">&#127897; vocal · 5 h</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row" style="justify-content: space-between">
+                <span>&#11088; Moussa B. (admin)</span>
+                <span style="color: var(--grey); font-size: 10px">Admin</span>
+              </div>
+              <div class="row" style="justify-content: space-between; margin-top: 6px">
+                <span>&#128100; Halime C.</span>
+                <span class="action action--danger" style="min-height: 30px; font-size: 10px; padding: 0 8px">&#128683; EXCLURE</span>
+              </div>
+            </div>
+            <div class="note" style="color: #44555c">
+              Les membres recoivent un SMS ou une notification push a chaque nouvelle annonce du groupe.
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          Le createur devient administrateur : il peut supprimer une publication et exclure un membre
+          (table <code>group_bans</code>).
+        </p>
+      </div>
+      <!-- 6. MON COMPTE -->
+      <div class="frame">
+        <h2>6. Mon compte et blocages</h2>
+        <div class="phone">
+          <div class="status"><span>Bodogui</span><span>12:46</span></div>
+          <div class="bar"><span>&larr;</span><span class="grow">MON COMPTE</span><span>&#128172;</span></div>
+          <div class="body">
+            <div class="card" style="text-align: center">
+              <div style="font-size: 30px">&#128100;</div>
+              <strong>Achta A.</strong>
+              <div style="color: var(--grey); font-size: 11px">+235 66 00 00 01 · &#11088; 4,7</div>
+            </div>
+            <div class="tiles">
+              <div class="big big--green"><span class="ico">&#127991;</span>MES ANNONCES</div>
+              <div class="big" style="background: #c0392b"><span class="ico">&#128683;</span>BLOQUES</div>
+              <div class="big big--blue"><span class="ico">&#128266;</span>VOIX</div>
+              <div class="big big--dark"><span class="ico">&#127760;</span>LANGUE</div>
+            </div>
+            <div class="card" style="font-size: 11px">
+              <div class="row" style="justify-content: space-between">
+                <span>&#9993;&#65039; Alertes par SMS</span><span>&#9989;</span>
+              </div>
+              <div class="row" style="justify-content: space-between; margin-top: 6px">
+                <span>&#128242; Notifications push</span><span>&#9989;</span>
+              </div>
+            </div>
+            <div class="action action--grey" style="font-weight: 500">&#9881;&#65039; OPTIONS DU COMPTE</div>
+          </div>
+        </div>
+        <p class="note">
+          Options du compte : zone repliee par defaut, en bas de l'ecran. L'appui y ouvre le bouton
+          <strong>SUPPRIMER MON COMPTE</strong> (rouge) apres la phrase d'avertissement, puis sa
+          confirmation. Il n'y a <strong>pas de bouton de deconnexion</strong>.
+        </p>
+        <p class="note">
+          Ecran "Bloques" : liste des utilisateurs bloques avec bouton <strong>DEBLOQUER</strong> et retour
+          vocal. La langue se change a tout moment (francais, arabe tchadien, fulfulde, sara) : la
+          pastille ouvre une confirmation dans la langue actuelle, avec le drapeau et le nom natif
+          de la langue visee, la bascule n'a lieu qu'apres validation.
+        </p>
+      </div>
+    </div>
+    <footer>
+      Ecrans suivants a livrer en Phase 2 : appel en cours, recherche vocale avec Speech-to-Text,
+      statistiques vendeur, extension multi-pays (Cameroun, Niger, Mali, Burkina Faso).
+    </footer>
+  </body>
+</html>

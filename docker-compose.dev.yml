@@ -1,0 +1,80 @@
+# =============================================================================
+# Bodogui - pile de developpement local
+#   docker compose -f docker-compose.dev.yml up -d
+#   (PostgreSQL, Redis, MinIO pour simuler Backblaze B2)
+#
+# Puis, sur la machine hote :
+#   cd backend  && npm install && npm run migrate && npm run seed && npm run dev
+#   cd frontend && npm install && npm run dev
+# =============================================================================
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bodogui-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bodogui
+      POSTGRES_PASSWORD: bodogui
+      POSTGRES_DB: bodogui
+    ports:
+      - '5432:5432'
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bodogui -d bodogui']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: bodogui-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - dev-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: bodogui-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: bodogui
+      MINIO_ROOT_PASSWORD: bodogui-secret
+    ports:
+      - '9000:9000' # API S3
+      - '9001:9001' # Console web
+    volumes:
+      - dev-minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # Creation automatique du bucket "bodogui-media" au premier demarrage
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 bodogui bodogui-secret; do sleep 2; done;
+      mc mb --ignore-existing local/bodogui-media;
+      mc anonymous set download local/bodogui-media;
+      echo 'Bucket bodogui-media pret';
+      "
+
+volumes:
+  dev-db-data:
+  dev-redis-data:
+  dev-minio-data:
