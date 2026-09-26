@@ -155,3 +155,20 @@ d'entree.
 - [ ] Le message vocal du vendeur se lit dans l'application
 - [ ] `node scripts/smoke.mjs https://api.bodogui.com` passe sans echec
 - [ ] La sauvegarde de la nuit est presente dans le bucket B2 `bodogui-backups`
+
+## 12. Depannage
+
+| Symptome | Cause | Correction |
+| --- | --- | --- |
+| `GET /` renvoie `{"error":{"code":"not_found","message":"Route inconnue : GET /"}}` | Le domaine est branche sur le service **`api`** (port 4000) au lieu de **`web`** (port 80) : c'est la reponse normale de l'API pour une route inconnue | Coolify > service `web` > **Domains** : ajouter l'URL avec le port **80**, puis retirer cette URL des domaines de `api` et redeployer |
+| `https://<domaine>/healthz` renvoie du **JSON** (`{"status":"ok",...}`) | Idem : c'est la sonde de l'API | Le site doit repondre `ok` en texte brut (sonde Nginx du conteneur `web`) |
+| Page blanche, requetes `/api/v1/...` en 404 depuis le site | Domaine bien sur `web`, mais conteneur `api` arrete ou migrations en echec | Logs du service `api` (variables `POSTGRES_*`, `DATABASE_URL` construite par le compose) |
+| `web` refuse de demarrer : `port is already allocated` | Un `ports: '80:80'` a ete (re)ajoute dans `docker-compose.yml` | Garder `expose: '80'` : Traefik, installe par Coolify, publie deja 80/443 sur l'hote |
+| Les SMS renvoient vers un mauvais lien | `PUBLIC_WEB_URL` / `PUBLIC_API_URL` pas mises a jour | Mettre l'URL publique reelle (domaine Coolify ou domaine definitif) avant de tester les SMS |
+| Photos et vocaux disparus apres un redeploiement | `STORAGE_DRIVER=local` sans volume persistant | Passer a `STORAGE_DRIVER=b2` (production) ou garder le volume `api-storage` |
+| Le certificat HTTPS ne s'obtient pas | DNS pas encore propage, ou domaine en `sslip.io` sans `https://` | Verifier la resolution DNS, puis activer `https://` dans **Domains** ; en attendant, tester en `http://` |
+
+Rappel : le site (PWA) et l'API peuvent tourner sur **un seul domaine**, celui du service `web` :
+le Nginx du conteneur relaie `/api`, `/media` et `/voice` vers `api:4000` sur le reseau Docker
+interne. Un sous-domaine `api.*` n'est utile que pour un futur client Android ou des tests
+directs.
