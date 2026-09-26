@@ -117,6 +117,17 @@ node src/db/seed.js            # idempotent
 node src/db/seed.js --reset    # supprime puis reinsere les donnees de demo
 ```
 
+En **production reelle**, n'inserez que le referentiel indispensable (categories et quartiers
+de N'Djamena) — sans comptes, annonces, photos ni vocaux de demonstration :
+
+```bash
+node src/db/seed.js --reference-only
+```
+
+> Sans ce referentiel, `GET /api/v1/categories` renvoie `{"items":[]}` et l'ecran d'accueil de
+> l'application est vide : les migrations ne creent que le schema, jamais les donnees de
+> reference.
+
 ## 8. Backups
 
 Voir [BACKUPS.md](BACKUPS.md) : `pg_dump` quotidien vers Backblaze B2 via une

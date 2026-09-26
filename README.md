@@ -39,6 +39,7 @@ cp ../.env.example .env        # puis renseigner JWT_SECRET et DATABASE_URL
 npm install
 npm run migrate                # cree les tables
 npm run seed                   # categories, quartiers, annonces de demo
+                               # (production : npm run seed -- --reference-only)
 npm run dev                    # http://localhost:4000
 
 # 3. PWA

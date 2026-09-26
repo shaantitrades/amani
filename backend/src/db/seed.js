@@ -13,11 +13,15 @@ import { storeDemoMedia } from './seed-assets.js';
  * filtrage de visibilite).
  *
  * Utilisation :
- *   npm run seed              # insere / met a jour
- *   npm run seed -- --reset   # supprime les donnees de demonstration puis reinsere
+ *   npm run seed                      # insere / met a jour (referentiel + demonstration)
+ *   npm run seed -- --reset           # supprime les donnees de demonstration puis reinsere
+ *   npm run seed -- --reference-only  # production : categories + quartiers seulement,
+ *                                     # sans comptes, annonces ni medias de demonstration
  */
 
 const RESET = process.argv.includes('--reset');
+/** Production : n'insere que le referentiel indispensable (categories, quartiers). */
+const REFERENCE_ONLY = process.argv.includes('--reference-only');
 
 const CATEGORIES = [
   { code: 'animaux', label_fr: 'Animaux', label_ar: 'حيوانات', label_ff: 'Dabbaaji', label_sar: 'Nyama', icon: '🐄', color: '#128C7E', sort_order: 10 },
@@ -337,6 +341,22 @@ async function run() {
 
   const categories = await upsertCategories();
   const districts = await upsertDistricts();
+
+  // Production : le referentiel (categories, quartiers) est indispensable, les comptes et
+  // annonces de demonstration ne le sont pas.
+  if (REFERENCE_ONLY) {
+    logger.info(
+      { categories: categories.size, districts: districts.size },
+      'Referentiel pret (sans donnees de demonstration)',
+    );
+    // eslint-disable-next-line no-console
+    console.log(`
+Bodogui : referentiel insere (aucune donnee de demonstration)
+  - ${categories.size} categories, ${districts.size} quartiers de N'Djamena
+`);
+    return;
+  }
+
   const users = await upsertUsers(districts);
   const groups = await upsertGroups(users, districts);
   const ads = await upsertAds(users, categories, districts);
