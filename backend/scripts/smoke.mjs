@@ -27,8 +27,17 @@ console.log(`Smoke test Bodogui -> ${base}`);
 
 await check('GET /healthz', async () => {
   const res = await fetch(`${base}/healthz`);
-  const body = await res.json();
   expect(res.status === 200, `statut ${res.status}`);
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('json')) {
+    // Domaine unique (configuration Coolify recommandee) : c'est la sonde du conteneur
+    // web qui repond "ok" en texte brut. L'API est alors verifiee par les appels
+    // /api/v1/* ci-dessous, relayes par Nginx vers le conteneur api.
+    const text = (await res.text()).trim();
+    expect(text.startsWith('ok'), `reponse inattendue : ${text.slice(0, 40)}`);
+    return 'sonde web (Nginx) - API verifiee via /api/v1';
+  }
+  const body = await res.json();
   expect(body.checks?.database === true, 'base de donnees indisponible');
   return `uptime ${body.uptime}s, storage ${body.checks.storage.driver}`;
 });
@@ -44,7 +53,7 @@ await check('GET /api/v1/bootstrap (categories)', async () => {
   const res = await fetch(`${base}/api/v1/bootstrap`);
   const body = await res.json();
   expect(res.ok, `statut ${res.status}`);
-  expect(body.categories.length >= 5, 'jeu de categories incomplet (lancer npm run seed)');
+  expect(body.categories.length >= 5, 'jeu de categories incomplet (lancer node src/db/seed.js --reference-only)');
   return `${body.categories.length} categories, ${body.districts.length} quartiers`;
 });
 

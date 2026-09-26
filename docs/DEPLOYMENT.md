@@ -153,6 +153,11 @@ cd backend
 node scripts/smoke.mjs https://api.bodogui.com
 ```
 
+Le smoke test accepte les deux configurations : sur un domaine **API** dedie il lit la sonde JSON
+de l'API, sur un **domaine unique** (site + API derriere Nginx) il lit la sonde `ok` du site puis
+verifie l'API via `/api/v1/*`. Si le jeu de categories est vide, il rappelle la commande a lancer
+(`node src/db/seed.js --reference-only`).
+
 Le smoke test verifie `/healthz`, la version, le referentiel (categories) et une validation
 d'entree.
 
