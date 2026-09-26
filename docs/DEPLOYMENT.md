@@ -73,6 +73,15 @@ Dans les reglages de chaque service :
 
 Activez **HTTPS automatique** (Let's Encrypt). Coolify gere le renouvellement.
 
+> **Aucun port n'est publie sur l'hote par `docker-compose.yml`** : le service `web` declare
+> seulement `expose: 80`, car Traefik (installe avec Coolify) occupe deja 80/443 sur le VPS et
+> route vers le conteneur. Ajouter `ports: '80:80'` ferait echouer le demarrage avec
+> `port is already allocated`. Pour lancer la meme pile **sans** Coolify, utilisez la surcouche :
+>
+> ```bash
+> docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d
+> ```
+
 Le service `web` (Nginx) relaie deja `/api` et `/media` vers `api` sur le reseau Docker
 interne : le frontend peut donc fonctionner sans sous-domaine API, mais garder
 `api.bodogui.com` reste utile pour les tests et un futur client Android.

@@ -1,0 +1,15 @@
+# =============================================================================
+# Bodogui - surcouche « pile de production sans Coolify »
+#
+# docker-compose.yml n'expose AUCUN port sur l'hote : sur Coolify, Traefik publie 80/443
+# et route vers le conteneur web (erreur "port is already allocated" sinon).
+#
+# Pour lancer la meme pile directement sur un serveur (ou en preproduction), ajoutez
+# cette surcouche : elle publie le port 80 du conteneur web sur l'hote.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d
+# =============================================================================
+services:
+  web:
+    ports:
+      - '80:80'

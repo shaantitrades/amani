@@ -119,8 +119,13 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - '80:80'
+    # Port 80 INTERNE uniquement : sur Coolify c'est Traefik (installe avec Coolify) qui
+    # occupe 80/443 sur l'hote et route vers ce conteneur. Publier '80:80' ici ferait
+    # echouer le demarrage ("port is already allocated").
+    # Pile de production SANS Coolify :
+    #   docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d
+    expose:
+      - '80'
     networks:
       - internal
 
