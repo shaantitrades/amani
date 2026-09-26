@@ -67,6 +67,23 @@ export function isValidPhone(input, opts) {
   return normalizePhone(input, opts).ok;
 }
 
+/**
+ * Analyse une liste de numeros separes par des virgules (variable
+ * d'environnement) et ne conserve que les numeros valides, en E.164.
+ * Utilise pour la liste de test (`TEST_LOGIN_PHONES`).
+ * @param {string} raw
+ * @returns {string[]}
+ */
+export function parsePhoneList(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  const numbers = [];
+  for (const item of raw.split(',')) {
+    const normalized = normalizePhone(item.trim());
+    if (normalized.ok && !numbers.includes(normalized.e164)) numbers.push(normalized.e164);
+  }
+  return numbers;
+}
+
 /** Affichage lisible : +235 66 12 34 56 */
 export function formatPhone(e164) {
   if (!e164 || !e164.startsWith('+')) return e164 || '';

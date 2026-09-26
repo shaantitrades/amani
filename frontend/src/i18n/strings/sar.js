@@ -113,6 +113,8 @@ export default {
   install_button: 'TƐ',
   install_later: 'Kɔ',
   install_ios_hint: 'E iPhone: Sɔnɔ, kɔ "Kpe e ecran".',
+  install_required_message: 'Tɛ app ne lazɨm: kpe ne e telefɔn ma, kɔ ne pe tere wɔtɛ.',
+  install_open_browser: 'Pe e browser',
   group_chat: 'Kɔrɔ kubɛ',
   send: 'SƆNƆ',
   write_message: 'Wɔɛ mam',

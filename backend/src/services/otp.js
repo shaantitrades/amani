@@ -1,6 +1,7 @@
 import env from '../config/env.js';
 import { one, query } from '../lib/db.js';
 import { generateOtp, hashOtp, verifyOtp } from '../lib/crypto.js';
+import { normalizePhone } from '../lib/phone.js';
 import { getCache, keys } from '../lib/cache.js';
 import { AppError, badRequest, tooMany } from '../lib/errors.js';
 import { sendSms, renderTemplate } from './sms.js';
@@ -24,11 +25,29 @@ async function enforceRateLimit(cacheKey, max, windowSeconds) {
   });
 }
 
+/**
+ * Code a envoyer pour ce numero :
+ *  - numero de test (`TEST_LOGIN_PHONES`) : code fixe (`TEST_LOGIN_CODE`), aucun SMS ;
+ *  - sinon : code aleatoire a 5 chiffres.
+ * Fonction pure (aucune base de donnees) pour rester testable.
+ * @param {string} phone numero saisi ou E.164
+ * @param {{testPhones?: string[], testCode?: string}} [opts]
+ * @returns {{code: string, simulated: boolean, phone: string}}
+ */
+export function resolveOtpCode(phone, { testPhones = env.testLoginPhones, testCode = env.testLoginCode } = {}) {
+  const normalized = normalizePhone(phone);
+  const e164 = normalized.ok ? normalized.e164 : phone;
+  if (testCode && testPhones.length && normalized.ok && testPhones.includes(e164)) {
+    return { code: testCode, simulated: true, phone: e164 };
+  }
+  return { code: generateOtp(5), simulated: false, phone: e164 };
+}
+
 export async function requestOtp({ phone, ip, language = 'fr', purpose = 'login' }) {
   await enforceRateLimit(keys.otpRatePhone(phone), env.OTP_PER_PHONE_PER_HOUR, 3600);
   if (ip) await enforceRateLimit(keys.otpRateIp(ip), env.OTP_PER_IP_PER_HOUR, 3600);
 
-  const code = generateOtp(5);
+  const { code, simulated } = resolveOtpCode(phone);
   const ttl = env.OTP_TTL_SECONDS;
   await query(
     `INSERT INTO otp_codes (phone, code_hash, purpose, max_attempts, expires_at, request_ip)
@@ -36,15 +55,21 @@ export async function requestOtp({ phone, ip, language = 'fr', purpose = 'login'
     [phone, hashOtp(code, phone), purpose, env.OTP_MAX_ATTEMPTS, String(ttl), ip || null],
   );
 
-  const minutes = Math.max(1, Math.round(ttl / 60));
-  const body = renderTemplate('otp', language, { code }).replace('{{ttl}}', String(minutes));
-
   let sms = { ok: false, provider: env.SMS_PROVIDER };
-  try {
-    sms = await sendSms({ to: phone, body });
-  } catch (err) {
-    logger.error({ err: err.message, phone }, "Echec d'envoi du SMS OTP");
-    // En production, on ne bloque pas la reponse : l'utilisateur peut redemander.
+  if (simulated) {
+    // Numero de recette : le code est connu de l'administrateur, on ne consomme
+    // pas de credit SMS. Le code reste a usage unique et expire comme les autres.
+    logger.warn({ phone, provider: 'test' }, 'Numero de test : code fixe, aucun SMS envoye');
+    sms = { ok: true, provider: 'test', simulated: true };
+  } else {
+    const minutes = Math.max(1, Math.round(ttl / 60));
+    const body = renderTemplate('otp', language, { code }).replace('{{ttl}}', String(minutes));
+    try {
+      sms = await sendSms({ to: phone, body });
+    } catch (err) {
+      logger.error({ err: err.message, phone }, "Echec d'envoi du SMS OTP");
+      // En production, on ne bloque pas la reponse : l'utilisateur peut redemander.
+    }
   }
 
   return {
@@ -119,4 +144,4 @@ export async function purgeExpiredOtp() {
   return res.rowCount;
 }
 
-export default { requestOtp, verifyOtpCode, purgeExpiredOtp };
+export default { requestOtp, verifyOtpCode, purgeExpiredOtp, resolveOtpCode };

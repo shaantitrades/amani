@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
+import { parsePhoneList } from '../lib/phone.js';
 
 const bool = (def) =>
   z
@@ -31,6 +32,14 @@ const schema = z.object({
   OTP_PER_PHONE_PER_HOUR: int(5),
   OTP_PER_IP_PER_HOUR: int(30),
   OTP_DEV_ECHO: bool(false),
+  // Connexion de test (recette sur le site deploye) : code fixe pour des numeros
+  // autorises, sans passer par la passerelle SMS. A laisser vide en production
+  // publique : voir docs/ENVIRONMENT.md.
+  TEST_LOGIN_PHONES: z.string().default(''),
+  TEST_LOGIN_CODE: z
+    .string()
+    .default('')
+    .refine((v) => v === '' || /^\d{4,8}$/.test(v), 'TEST_LOGIN_CODE doit contenir 4 a 8 chiffres'),
 
   SMS_PROVIDER: z.enum(['console', 'africastalking', 'twilio']).default('console'),
   SMS_SENDER_ID: z.string().default('BODOGUI'),
@@ -86,6 +95,9 @@ if (!parsed.success) {
 
 const raw = parsed.data;
 
+/** Numeros autorises a la connexion de test (code fixe, sans SMS). */
+const testLoginPhones = parsePhoneList(raw.TEST_LOGIN_PHONES);
+
 export const env = {
   ...raw,
   isProd: raw.NODE_ENV === 'production',
@@ -93,6 +105,11 @@ export const env = {
   corsOrigins: raw.CORS_ORIGINS.split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  // Connexion de test : activee uniquement si une liste de numeros ET un code
+  // sont fournis (les deux sont vides par defaut).
+  testLoginPhones,
+  testLoginCode: raw.TEST_LOGIN_CODE,
+  testLoginEnabled: Boolean(raw.TEST_LOGIN_CODE) && testLoginPhones.length > 0,
   storage: raw.STORAGE_DRIVER === 'b2'
     ? {
         driver: 'b2',

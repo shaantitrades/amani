@@ -2,7 +2,7 @@
 
 Toutes les variables sont lues par `backend/src/config/env.js` (validation zod au demarrage :
 l'API refuse de demarrer si une valeur obligatoire manque ou est invalide).
-Le frontend n'utilise qu'une seule variable optionnelle : `VITE_API_URL`.
+Le frontend, lui, ne lit que des variables `VITE_*` (voir la section Frontend en fin de page).
 
 ## Obligatoires en production
 
@@ -43,6 +43,8 @@ deja vers le service `redis` interne.
 | `OTP_PER_PHONE_PER_HOUR` | `5` | Limite par numero (anti-abus) |
 | `OTP_PER_IP_PER_HOUR` | `30` | Limite par adresse IP |
 | `OTP_DEV_ECHO` | `false` | **Jamais en production** : renvoie le code dans la reponse |
+| `TEST_LOGIN_PHONES` | — | Numeros autorises au **code fixe de recette** (E.164, separes par des virgules) |
+| `TEST_LOGIN_CODE` | — | Code fixe (4 a 8 chiffres) pour ces numeros, **sans SMS**. A vider apres la recette |
 | `JWT_TTL` | `30d` | Duree du jeton d'acces |
 | `REFRESH_TTL_DAYS` | `180` | Duree du jeton de rafraichissement |
 
@@ -56,6 +58,28 @@ deja vers le service `redis` interne.
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | Identifiants Twilio |
 
 En mode `console`, les SMS sont ecrits dans les logs (aucun cout).
+
+### Se connecter sans passerelle SMS (recette)
+
+Deux solutions, utilisables ensemble :
+
+1. **`SMS_PROVIDER=console`** : aucun SMS n'est envoye, mais le texte complet — code
+   inclus — apparait dans les logs du conteneur `api` (Coolify > Logs).
+2. **Connexion de test** : renseignez
+
+   ```bash
+   TEST_LOGIN_PHONES=+23566000001,+23566123456   # numeros acceptes (E.164)
+   TEST_LOGIN_CODE=12345                         # 4 a 8 chiffres
+   ```
+
+   Ces numeros se connectent alors avec le code fixe, sans SMS. Le code reste a
+   usage unique (il faut redemander le code a chaque connexion), expire en
+   `OTP_TTL_SECONDS` et respecte les limites anti-abus.
+
+> `TEST_LOGIN_PHONES` / `TEST_LOGIN_CODE` **doivent etre vides** en production
+> publique : un code fixe est un mot de passe partage. Le serveur ecrit un
+> avertissement au demarrage lorsque la connexion de test est active.
+
 
 ## Stockage des medias
 
@@ -108,10 +132,13 @@ est ignore et les SMS restent la seule voie de notification.
 
 ## Frontend
 
+Le frontend ne lit que des variables `VITE_*` exposees au moment du build (fichier `frontend/.env`) :
+
 | Variable | Defaut | Description |
 | --- | --- | --- |
 | `VITE_API_URL` | `/api/v1` | Chemin de l'API (proxy Nginx en production) |
 | `VITE_API_PROXY` | `http://127.0.0.1:4000` | Cible du proxy Vite en developpement |
+| `VITE_INSTALL_GATE` | *(active)* | `off` desactive le portail d'installation obligatoire (reserve au developpement) |
 
 ## Securite
 

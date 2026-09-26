@@ -113,6 +113,8 @@ export default {
   install_button: 'WAƊƊU',
   install_later: 'Caggal',
   install_ios_hint: 'E iPhone : Senndu, caggal ɗuum "E ekran galle".',
+  install_required_message: 'Waɗɗugol nde waajibi : app nde waɗɗetee e telefoŋ maa, nde udditotoo ko nde e hoore mum.',
+  install_open_browser: 'Uddit e browser',
   group_chat: 'Yeewtere kuyye',
   send: 'NELDU',
   write_message: 'Nelal maa',

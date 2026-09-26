@@ -128,6 +128,33 @@ node src/db/seed.js --reference-only
 > l'application est vide : les migrations ne creent que le schema, jamais les donnees de
 > reference.
 
+### Tester la connexion avant l'ouverture du compte SMS
+
+Tant que le compte Africa's Talking n'est pas actif, aucune connexion n'est possible sur le site
+deploye : le code part par SMS. Deux solutions de recette (voir
+[ENVIRONMENT.md](ENVIRONMENT.md#se-connecter-sans-passerelle-sms-recette)) :
+
+```bash
+# Dans Coolify > Environment (puis redeployer)
+TEST_LOGIN_PHONES=+23566000001      # votre numero de test, format international
+TEST_LOGIN_CODE=12345               # code fixe, 4 a 8 chiffres
+```
+
+- Connectez-vous depuis l'application avec ce numero, puis saisissez `12345` (il faut avoir
+  touche « recevoir le code » auparavant : le code reste a usage unique et valable 5 minutes).
+- Chaque connexion reussie cree le compte (inscription implicite) : un numero jamais vu
+  devient un nouvel utilisateur, avec le role `user`. Pour tester la moderation, promouvez-le :
+
+```bash
+node -e "import('./src/lib/db.js').then(async ({query,closePool})=>{await query(\"UPDATE users SET role='admin' WHERE phone='+23566000001'\");process.exit(0)})"
+```
+
+- **Avant l'ouverture au public**, supprimez `TEST_LOGIN_PHONES` et `TEST_LOGIN_CODE` puis
+  redeployez : un code fixe est un mot de passe partage.
+
+Le jeu de donnees de demonstration (`node src/db/seed.js`) cree aussi des comptes de test
+(+235 66 00 00 00 a +235 66 00 00 06) : ils ne fonctionnent que si vous avez lance le seed complet.
+
 ## 8. Backups
 
 Voir [BACKUPS.md](BACKUPS.md) : `pg_dump` quotidien vers Backblaze B2 via une
@@ -165,7 +192,11 @@ d'entree.
 
 - [ ] `https://api.bodogui.com/healthz` retourne `status: ok` et `database: true`
 - [ ] Le certificat SSL est valide sur les deux domaines
-- [ ] L'installation de la PWA est proposee (Chrome Android > "Ajouter a l'ecran d'accueil")
+- [ ] Le site est servi en **HTTPS** : sans HTTPS, Chrome/Android ne propose pas l'installation
+- [ ] L'installation de la PWA est **obligatoire** a la premiere visite, puis l'application s'ouvre
+      sans navigateur (« Ajouter a l'ecran d'accueil » sur iPhone)
+- [ ] Une connexion reussit (numero de test ou vrai SMS) ; `TEST_LOGIN_PHONES` / `TEST_LOGIN_CODE`
+      sont vides avant l'ouverture au public
 - [ ] Un vrai numero recoit bien le SMS de code (pays du pilote)
 - [ ] Une annonce publiee depuis un telephone apparait avec sa photo et son vocal
 - [ ] Le message vocal du vendeur se lit dans l'application
@@ -181,6 +212,8 @@ d'entree.
 | Page blanche, requetes `/api/v1/...` en 404 depuis le site | Domaine bien sur `web`, mais conteneur `api` arrete ou migrations en echec | Logs du service `api` (variables `POSTGRES_*`, `DATABASE_URL` construite par le compose) |
 | `web` refuse de demarrer : `port is already allocated` | Un `ports: '80:80'` a ete (re)ajoute dans `docker-compose.yml` | Garder `expose: '80'` : Traefik, installe par Coolify, publie deja 80/443 sur l'hote |
 | Les SMS renvoient vers un mauvais lien | `PUBLIC_WEB_URL` / `PUBLIC_API_URL` pas mises a jour | Mettre l'URL publique reelle (domaine Coolify ou domaine definitif) avant de tester les SMS |
+| « Code incorrect » alors qu'aucun SMS n'arrive | Passerelle SMS non configuree (`SMS_PROVIDER=africastalking` sans identifiants) : le code est bien cree, mais jamais envoye | `SMS_PROVIDER=console` (le code apparait dans les logs du service `api`) ou connexion de test `TEST_LOGIN_PHONES` + `TEST_LOGIN_CODE` (voir § 7) |
+| L'application reste bloquee sur « Installer Bodogui » | Le site n'est pas en HTTPS (l'installation PWA exige une origine securisee) ou le navigateur ne sait pas installer | Activer `https://` dans **Domains** ; sur un navigateur sans installation, le lien « Ouvrir dans le navigateur » apparait apres quelques secondes |
 | Photos et vocaux disparus apres un redeploiement | `STORAGE_DRIVER=local` sans volume persistant | Passer a `STORAGE_DRIVER=b2` (production) ou garder le volume `api-storage` |
 | Le certificat HTTPS ne s'obtient pas | DNS pas encore propage, ou domaine en `sslip.io` sans `https://` | Verifier la resolution DNS, puis activer `https://` dans **Domains** ; en attendant, tester en `http://` |
 

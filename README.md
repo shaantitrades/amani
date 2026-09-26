@@ -126,10 +126,16 @@ vocal, fil d'annonces, recherche filtree, contact direct, **blocage/deblocage**,
   des appels lances (IndexedDB : rien n'est envoye au serveur, boutons 📞 et 💬, appel par
   `tel:`). L'onglet **Notifications** affiche le journal des alertes SMS / push / vocales
   (`GET /me/notifications`), consultable hors ligne et remis a zero a l'ouverture.
-- **Installation de la PWA** : invitation affichee **au centre de l'ecran** pour les
-  visiteurs qui arrivent d'un lien partage, avec detection d'installation (mode autonome,
-  evenement `appinstalled`) : elle ne s'affiche jamais si Bodogui est deja installe, et pas
-  plus d'une fois tous les 3 jours apres un refus.
+- **Installation de la PWA obligatoire** : a la premiere visite, l'application n'est pas ouverte
+  tant que Bodogui n'est pas installe. Un **portail plein ecran** remplace tout le site (aucun
+  ecran n'apparait puis disparait, aucune requete inutile en 2G) : bouton INSTALLER sur
+  Android/Chrome, instructions « Partager > Sur l ecran d'accueil » sur iPhone. Une application
+  deja installee (mode autonome, `appinstalled`) entre directement ; sur un navigateur qui ne
+  peut pas installer (Firefox, site en HTTP non securise), un lien discret « Ouvrir dans le
+  navigateur » apparait apres quelques secondes, sinon ces visiteurs seraient bloques
+  definitivement (`frontend/src/components/InstallGate.jsx`, regles dans `frontend/src/lib/pwa.js`).
+  Le portail se desactive pour le developpement avec `VITE_INSTALL_GATE=off` ; dans ce cas
+  l'invitation classique (non bloquante, refus repousse de 3 jours) reprend le relais.
 - **Partage d'annonce** : bouton PARTAGER (WhatsApp, menu de partage du telephone, copie du
   lien). Le texte partage ne contient **que le lien** (jamais le numero du vendeur). Une
   annonce partagee **exige une inscription**, et sans compte il est impossible d'ecrire au

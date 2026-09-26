@@ -60,6 +60,12 @@ async function start() {
   const dbOk = await healthCheck().catch(() => false);
   if (!dbOk) logger.warn('Base de donnees injoignable au demarrage : /healthz renverra 503');
   if (!isRedisReady()) logger.warn('Redis indisponible : cache en memoire (degradation acceptable)');
+  if (env.testLoginEnabled) {
+    logger.warn(
+      { phones: env.testLoginPhones },
+      'Connexion de test activee (code fixe, sans SMS) : a desactiver apres la recette',
+    );
+  }
 
   const server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT, env: env.NODE_ENV }, 'API Bodogui demarree');

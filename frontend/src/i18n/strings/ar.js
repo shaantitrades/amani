@@ -141,6 +141,8 @@ export default {
   install_later: 'لاحقا',
   install_ios_hint: 'في الآيفون: شارك ثم "إضافة إلى الشاشة".',
   install_done: 'تم التثبيت.',
+  install_required_message: 'التثبيت إلزامي: يُثبَّت التطبيق على هاتفك ثم يفتح وحده.',
+  install_open_browser: 'افتح في المتصفح',
   group_chat: 'محادثة المجموعة',
   attach: 'إرفاق ملف',
   attach_photo: 'أرسل صورة',

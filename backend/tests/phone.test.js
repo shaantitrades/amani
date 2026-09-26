@@ -1,7 +1,7 @@
 import './helpers/bootstrap.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COUNTRIES, dialable, formatPhone, isValidPhone, normalizePhone } from '../src/lib/phone.js';
+import { COUNTRIES, dialable, formatPhone, isValidPhone, normalizePhone, parsePhoneList } from '../src/lib/phone.js';
 
 test('normalise un numero tchadien local (8 chiffres)', () => {
   const r = normalizePhone('66123456');
@@ -37,6 +37,14 @@ test('isValidPhone et dialable', () => {
   assert.equal(isValidPhone('66123456'), true);
   assert.equal(isValidPhone('6612345'), false);
   assert.equal(dialable('+235 66 12 34 56'), '+23566123456');
+});
+
+test('parsePhoneList normalise, filtre et dedoublonne (numeros de test)', () => {
+  assert.deepEqual(parsePhoneList('+235 66 00 00 00, 66123456, +23566000000'), ['+23566000000', '+23566123456']);
+  assert.deepEqual(parsePhoneList('0023566000000'), ['+23566000000']);
+  assert.deepEqual(parsePhoneList(''), []);
+  assert.deepEqual(parsePhoneList('abc, 12'), [], 'les entrees invalides sont ignorees');
+  assert.deepEqual(parsePhoneList(undefined), []);
 });
 
 test('formate un numero lisible', () => {

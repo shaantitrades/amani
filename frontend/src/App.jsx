@@ -2,9 +2,11 @@ import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
+import { InstallGate } from './components/InstallGate.jsx';
 import { InstallPrompt } from './components/InstallPrompt.jsx';
 import { OfflineBanner, Spinner, Toast } from './components/ui.jsx';
 import { TabBar } from './components/TabBar.jsx';
+import { INSTALL_GATE_ENABLED } from './lib/pwa.js';
 import Welcome from './pages/Welcome.jsx';
 import Login from './pages/Login.jsx';
 import Home from './pages/Home.jsx';
@@ -71,13 +73,19 @@ export default function App() {
     // Filet de securite principal : aucune erreur ne doit produire une page blanche
     <ErrorBoundary>
       <AppProvider>
-        <OfflineBanner />
-        <Router />
-        {/* Barre d'onglets du bas (mobile) : Accueil, Discussions, Appels,
-            Mes annonces, Notifications. */}
-        <TabBar />
-        <InstallPrompt />
-        <Toast />
+        {/* Portail d'installation obligatoire : tant que Bodogui n'est pas
+            installe, aucun ecran n'est monte (ni requete reseau inutile en 2G).
+            L'invitation classique (non bloquante) ne sert plus que si le
+            portail est desactive (VITE_INSTALL_GATE=off). */}
+        <InstallGate>
+          <OfflineBanner />
+          <Router />
+          {/* Barre d'onglets du bas (mobile) : Accueil, Discussions, Appels,
+              Mes annonces, Notifications. */}
+          <TabBar />
+          {INSTALL_GATE_ENABLED ? null : <InstallPrompt />}
+          <Toast />
+        </InstallGate>
       </AppProvider>
     </ErrorBoundary>
   );

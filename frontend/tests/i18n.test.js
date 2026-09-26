@@ -119,6 +119,21 @@ test('le changement de langue est confirme et traduit dans les 4 langues', () =>
   }
 });
 
+test('l\'installation obligatoire est expliquee dans les 4 langues', () => {
+  // Le portail d'installation remplace toute l'application : un visiteur qui ne
+  // comprend ni le francais ni l'anglais doit savoir quoi faire.
+  const codes = LANGUAGES.map((l) => l.code);
+  for (const key of ['install_required_message', 'install_open_browser']) {
+    assert.ok(t('fr', key) && t('fr', key) !== key, `fr.${key} manquant`);
+    for (const lang of codes.filter((code) => code !== 'fr')) {
+      const value = t(lang, key);
+      assert.ok(value && value !== key, `${lang}.${key} manquant`);
+      assert.notEqual(value, t('fr', key), `${lang}.${key} doit etre traduit, pas replie sur le francais`);
+    }
+  }
+});
+
+
 test('promptUrl pointe vers les fichiers Opus par langue', () => {
   assert.equal(promptUrl('ad_published', 'fr'), '/voice/fr/ad_published.opus');
   assert.equal(promptUrl('blocked', 'sar'), '/voice/sar/blocked.opus');

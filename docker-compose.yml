@@ -79,6 +79,9 @@ services:
       PUBLIC_API_URL: ${PUBLIC_API_URL}
       OTP_DEV_ECHO: 'false'
       OTP_PER_PHONE_PER_HOUR: ${OTP_PER_PHONE_PER_HOUR:-5}
+      # Connexion de recette : code fixe sans SMS (vide = desactive)
+      TEST_LOGIN_PHONES: ${TEST_LOGIN_PHONES:-}
+      TEST_LOGIN_CODE: ${TEST_LOGIN_CODE:-}
       SMS_PROVIDER: ${SMS_PROVIDER:-africastalking}
       SMS_SENDER_ID: ${SMS_SENDER_ID:-BODOGUI}
       AFRICASTALKING_USERNAME: ${AFRICASTALKING_USERNAME:-}

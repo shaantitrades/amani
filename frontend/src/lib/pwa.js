@@ -12,6 +12,17 @@
 export const INSTALL_KEY = 'bodogui.install';
 export const INSTALL_COOLDOWN_DAYS = 3;
 
+/**
+ * Installation obligatoire : sur le site, Bodogui s'installe et l'application
+ * remplace le navigateur (plus de barre d'adresse, ouverture par l'icone,
+ * notifications). Peut etre desactivee pour le developpement avec
+ * `VITE_INSTALL_GATE=off` (fichier `.env` du frontend).
+ */
+export const INSTALL_GATE_ENABLED = import.meta.env?.VITE_INSTALL_GATE !== 'off';
+
+/** Delai laisse au navigateur pour emettre `beforeinstallprompt`. */
+export const INSTALL_GATE_GRACE_MS = 2500;
+
 function defaultWindow() {
   return typeof window === 'undefined' ? null : window;
 }
@@ -98,19 +109,73 @@ export function markInstalled(storage = defaultStorage()) {
   return writeInstallState({ installed: true, installedAt: Date.now() }, storage);
 }
 
+/**
+ * Faut-il **bloquer** l'acces a l'application tant qu'elle n'est pas installee ?
+ *
+ * Regles :
+ *  - l'application deja installee (mode autonome ou `appinstalled`) n'est jamais bloquee ;
+ *  - si le navigateur sait installer (`beforeinstallprompt`), le blocage est total :
+ *    seule l'installation ouvre l'application ;
+ *  - sur iPhone (installation manuelle) et sur les navigateurs sans installation
+ *    (Firefox, HTTP non securise), une porte de sortie apparait apres le delai
+ *    d'attente — sinon ces visiteurs ne pourraient jamais utiliser le site.
+ *
+ * @param {object} input
+ * @param {boolean} [input.enabled] installation obligatoire activee
+ * @param {boolean} [input.standalone] l'app tourne en mode installe
+ * @param {boolean} [input.installed] installation detectee lors d'une visite precedente
+ * @param {boolean} [input.bypassed] le visiteur a choisi de continuer dans le navigateur
+ * @param {boolean} [input.canPrompt] le navigateur a fourni un declencheur d'installation
+ * @param {boolean} [input.ios] navigateur iOS (installation manuelle)
+ * @param {boolean} [input.settled] le delai d'attente de `beforeinstallprompt` est ecoule
+ * @param {boolean} [input.promptUsed] la boite de dialogue d'installation a deja ete ouverte
+ * @returns {{block: boolean, canEscape: boolean, reason: string}}
+ */
+export function shouldShowInstallGate({
+  enabled = INSTALL_GATE_ENABLED,
+  standalone = false,
+  installed = false,
+  bypassed = false,
+  canPrompt = false,
+  ios = false,
+  settled = false,
+  promptUsed = false,
+} = {}) {
+  if (!enabled) return { block: false, canEscape: false, reason: 'disabled' };
+  if (standalone) return { block: false, canEscape: false, reason: 'already_standalone' };
+  if (installed) return { block: false, canEscape: false, reason: 'already_installed' };
+  if (bypassed) return { block: false, canEscape: false, reason: 'bypassed' };
+  if (canPrompt) return { block: true, canEscape: false, reason: 'prompt_available' };
+  if (ios) return { block: true, canEscape: settled, reason: 'ios_manual_install' };
+  // Navigateur sans boite de dialogue disponible : porte de sortie apres l'attente.
+  // Si le declencheur a deja ete consomme (installation refusee), on reste bloque :
+  // recharger la page repropose l'installation.
+  if (promptUsed) return { block: true, canEscape: false, reason: 'prompt_refused' };
+  return { block: true, canEscape: settled, reason: settled ? 'unsupported' : 'waiting_prompt' };
+}
+
 /** L'utilisateur choisit "Plus tard" : on ne reaffiche pas avant le delai. */
 export function markDismissed(storage = defaultStorage()) {
   return writeInstallState({ dismissedAt: Date.now() }, storage);
 }
 
+/** Navigateur sans installation : le visiteur est autorise a continuer sans installer. */
+export function markGateBypassed(storage = defaultStorage()) {
+  return writeInstallState({ bypassed: true }, storage);
+}
+
 export default {
   INSTALL_KEY,
   INSTALL_COOLDOWN_DAYS,
+  INSTALL_GATE_ENABLED,
+  INSTALL_GATE_GRACE_MS,
   isStandalone,
   isIos,
   readInstallState,
   writeInstallState,
   shouldShowInstallPrompt,
+  shouldShowInstallGate,
   markInstalled,
   markDismissed,
+  markGateBypassed,
 };
