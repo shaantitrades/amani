@@ -52,6 +52,12 @@ npx web-push generate-vapid-keys   # -> VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (si
 Points d'attention :
 
 - `POSTGRES_PASSWORD` est obligatoire (le compose refuse de demarrer sans).
+- **Ne creez pas de ressource PostgreSQL separee dans Coolify** : le service `db` du compose
+  (PostgreSQL 16 + volume `db-data` + reglages memoire pour le VPS) tient ce role. De meme,
+  ne definissez pas `DATABASE_URL` ni `REDIS_URL` a la main : le compose les construit a partir
+  de `POSTGRES_*` et du service `redis` interne.
+- Utilisez un mot de passe PostgreSQL **hexadecimal** (`openssl rand -hex 24`) : il est insere
+  tel quel dans l'URL de connexion (`+`, `/`, `=` ou `@` la casseraient).
 - `CORS_ORIGINS` doit contenir exactement les domaines du frontend.
 - `SMS_PROVIDER=africastalking` + identifiants : sans SMS, aucun utilisateur ne peut s'inscrire.
 - `STORAGE_DRIVER=b2` + cles Backblaze B2 (voir section 6).

@@ -15,6 +15,13 @@ Le frontend n'utilise qu'une seule variable optionnelle : `VITE_API_URL`.
 | `PUBLIC_WEB_URL` | `https://bodogui.com` | Liens dans les SMS |
 | `PUBLIC_API_URL` | `https://api.bodogui.com` | Liens profonds |
 
+Avec `docker-compose.yml`, `DATABASE_URL` est **construite automatiquement** a partir de
+`POSTGRES_USER`, `POSTGRES_PASSWORD` et `POSTGRES_DB` (service `db` du compose) : ne la
+definissez donc pas dans Coolify. Le mot de passe est insere tel quel dans l'URL, donc utilisez
+un mot de passe **hexadecimal** (`openssl rand -hex 24`) : un `@`, `:`, `/`, `+` ou `=`
+(mot de passe base64) casserait la connexion. Meme remarque pour `REDIS_URL` : le compose pointe
+deja vers le service `redis` interne.
+
 ## Generales
 
 | Variable | Defaut | Description |
