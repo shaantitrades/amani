@@ -154,6 +154,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # Portail d'installation : 'invite' (defaut) le propose sans l'imposer,
+      # 'mandatory' le rend bloquant, 'off' le desactive completement. La valeur
+      # est figee dans le bundle au build : changer ici demande un redeploiement
+      # avec reconstruction de l'image.
+      args:
+        VITE_INSTALL_GATE: ${VITE_INSTALL_GATE:-invite}
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
     restart: unless-stopped
     depends_on:
       - api
