@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
+import { disableScrollRestoration, scrollPageToTop } from './lib/scroll.js';
 import './styles/app.css';
 
 /**
@@ -9,6 +10,14 @@ import './styles/app.css';
  * Le service worker est injecte par vite-plugin-pwa (strategie autoUpdate) ;
  * la mise a jour se fait en arriere-plan, sans bloquer l'utilisateur.
  */
+
+// L'application repart toujours du haut. Sans cela, quand la PWA installee est
+// rouverte (ou la page rechargee), le navigateur restaure la position de
+// defilement precedente : les premiers boutons de l'ecran (onglets du groupe,
+// tuile VENDRE) apparaissent a moitie caches sous la barre du haut collante.
+disableScrollRestoration();
+scrollPageToTop();
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>

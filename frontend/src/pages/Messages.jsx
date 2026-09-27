@@ -139,7 +139,7 @@ export default function Messages() {
     const name = other?.other_name || fromAd?.name || null;
     const phone = other?.other_phone || fromAd?.phone || null;
     return (
-      <div className="screen screen--chat">
+      <div className="screen screen--chat screen--chat-pane">
         <TopBar
           title={name || formatPhone(phone) || t(language, 'messages')}
           subtitle={phone ? formatPhone(phone) : undefined}

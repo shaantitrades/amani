@@ -186,7 +186,7 @@ export default function GroupDetail() {
   if (!group) return null;
 
   return (
-    <div className="screen screen--chat">
+    <div className={`screen screen--chat ${tab === 'chat' ? 'screen--chat-pane' : ''}`}>
       <TopBar
         title={group.name}
         subtitle={`${group.members_count} ${t(language, 'members')}${group.is_private ? ' · 🔒' : ''}`}

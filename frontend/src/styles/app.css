@@ -18,6 +18,10 @@
      (`scroll-margin-top`) pour qu'un champ ramene dans la vue par le navigateur
      ne se retrouve jamais cache DERRIERE la barre pendant la saisie. */
   --topbar-min: 64px;
+  /* Encoche / barre d'etat : avec `viewport-fit=cover`, le haut de la fenetre
+     peut etre occupe par la barre systeme (application installee plein ecran).
+     La barre du haut reserve cette hauteur : ses boutons ne sont jamais rognes. */
+  --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -64,6 +68,14 @@ img {
 }
 
 /* --- Barre superieure ------------------------------------------------------ */
+/* La barre est collante : le contenu defile SOUS elle. Tout element ramene dans
+   la vue par le navigateur (champ de saisie, ancrage, scrollIntoView) doit donc
+   s'arreter sous cette barre, sinon il apparait a moitie cache. */
+html {
+  scroll-padding-top: calc(var(--topbar-min) + var(--safe-top) + 12px);
+  scroll-padding-bottom: calc(96px + var(--safe-bottom));
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -71,11 +83,15 @@ img {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: var(--topbar-min);
+  /* Hauteur mini + encoche : les boutons restent entierement visibles sur les
+     telephones dont la barre systeme recouvre le haut de la fenetre. */
+  min-height: calc(var(--topbar-min) + var(--safe-top));
   margin: 0 -12px 12px;
-  padding: 6px 12px;
+  padding: calc(6px + var(--safe-top)) 12px 6px;
   background: var(--wa-green-dark);
   color: var(--wa-white);
+  /* Ombre discrete : on voit nettement que le contenu passe DERRIERE la barre. */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .topbar__titles {
@@ -1656,6 +1672,39 @@ select {
   /* Page du groupe assombrie pour s'accorder au fond du cadre de discussion */
   background: #cabca6;
   padding-bottom: calc(84px + var(--safe-bottom));
+}
+
+/* Ecran de discussion qui TIENT dans la fenetre : la barre du haut, les onglets
+   et le bouton d'action restent toujours visibles, seul le cadre des messages
+   defile. Sans cela la page est plus haute que la fenetre (ou le redevient quand
+   le clavier se ferme) : des qu'elle est un peu defilee, le haut des onglets
+   passe sous la barre du haut collante. */
+.screen--chat-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Barre du haut, onglets, bouton d'action, rappel d'annonce : hauteur naturelle. */
+.screen--chat-pane > *:not(.chat-frame) {
+  flex: 0 0 auto;
+}
+
+/* Le cadre des messages occupe la place restante et defile tout seul. */
+.screen--chat-pane > .chat-frame {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 96px;
+  max-height: none;
+}
+
+/* Cadre devenu grand : le message "aucun message" est centre verticalement. */
+.screen--chat-pane > .chat-frame > .chat-frame__empty {
+  margin: auto 0;
 }
 
 .chat-frame {

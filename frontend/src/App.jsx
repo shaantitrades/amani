@@ -4,6 +4,7 @@ import { AppProvider, useApp } from './context/AppContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { InstallGate } from './components/InstallGate.jsx';
 import { InstallPrompt } from './components/InstallPrompt.jsx';
+import { ScrollToTop } from './components/ScrollToTop.jsx';
 import { OfflineBanner, Spinner, Toast } from './components/ui.jsx';
 import { TabBar } from './components/TabBar.jsx';
 import { INSTALL_GATE_ENABLED } from './lib/pwa.js';
@@ -78,6 +79,10 @@ export default function App() {
             L'invitation classique (non bloquante) ne sert plus que si le
             portail est desactive (VITE_INSTALL_GATE=off). */}
         <InstallGate>
+          {/* Remise en haut a chaque changement d'ecran : le premier element d'un
+              ecran (onglets du groupe, tuile VENDRE de l'accueil) ne doit jamais
+              rester a moitie cache sous la barre du haut, qui est collante. */}
+          <ScrollToTop />
           <OfflineBanner />
           <Router />
           {/* Barre d'onglets du bas (mobile) : Accueil, Discussions, Appels,
