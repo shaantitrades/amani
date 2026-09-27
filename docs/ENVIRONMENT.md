@@ -11,7 +11,7 @@ Le frontend, lui, ne lit que des variables `VITE_*` (voir la section Frontend en
 | `DATABASE_URL` | `postgres://bodogui:...@db:5432/bodogui` | Connexion PostgreSQL |
 | `JWT_SECRET` | `openssl rand -hex 32` | Signature des jetons **et** hachage des codes OTP |
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24` | Utilise par l'image PostgreSQL du compose |
-| `CORS_ORIGINS` | `https://bodogui.com,https://app.bodogui.com` | Origines autorisees |
+| `CORS_ORIGINS` | `https://bodogui.com,https://app.bodogui.com` | Origines autorisees (vide = toutes, avec un avertissement au demarrage) |
 | `PUBLIC_WEB_URL` | `https://bodogui.com` | Liens dans les SMS |
 | `PUBLIC_API_URL` | `https://api.bodogui.com` | Liens profonds |
 

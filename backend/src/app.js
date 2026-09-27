@@ -4,6 +4,7 @@ import cors from 'cors';
 import pinoHttp from 'pino-http';
 import env from './config/env.js';
 import logger from './lib/logger.js';
+import { isOriginAllowed } from './lib/cors.js';
 import apiRoutes from './routes/index.js';
 import healthRoutes from './routes/health.js';
 import mediaProxyRoutes from './routes/media-proxy.js';
@@ -34,8 +35,8 @@ export function createApp() {
   app.use(
     cors({
       origin(origin, callback) {
-        if (!origin) return callback(null, true); // applications mobiles / tests
-        if (env.corsOrigins.includes('*') || env.corsOrigins.includes(origin)) return callback(null, true);
+        // Voir lib/cors.js : liste vide = CORS non configure, on ne bloque pas.
+        if (isOriginAllowed(origin, env.corsOrigins)) return callback(null, true);
         return callback(new Error(`Origine non autorisee : ${origin}`));
       },
       credentials: true,

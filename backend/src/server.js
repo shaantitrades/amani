@@ -60,6 +60,11 @@ async function start() {
   const dbOk = await healthCheck().catch(() => false);
   if (!dbOk) logger.warn('Base de donnees injoignable au demarrage : /healthz renverra 503');
   if (!isRedisReady()) logger.warn('Redis indisponible : cache en memoire (degradation acceptable)');
+  if (env.corsOrigins.length === 0) {
+    logger.warn(
+      'CORS_ORIGINS vide : toutes les origines sont acceptees. Definir la liste des domaines du site pour la production.',
+    );
+  }
   if (env.testLoginEnabled) {
     logger.warn(
       { phones: env.testLoginPhones },
