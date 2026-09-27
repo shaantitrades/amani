@@ -73,12 +73,90 @@ l'anomalie tout en laissant le conteneur vivant, ce qui permet de lire la cause 
 
 | Variable | Description |
 | --- | --- |
-| `SMS_PROVIDER` | `console` (dev), `africastalking`, `twilio` |
+| `SMS_PROVIDER` | `console` (dev), `africastalking`, `twilio`, `http` |
 | `SMS_SENDER_ID` | Expediteur affiche (ex : `BODOGUI`) |
 | `AFRICASTALKING_USERNAME` / `AFRICASTALKING_API_KEY` | Identifiants Africa's Talking |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | Identifiants Twilio |
+| `SMS_HTTP_URL` | Passerelle generique : URL appelee pour chaque SMS |
+| `SMS_HTTP_METHOD` | `POST` (defaut) ou `GET` |
+| `SMS_HTTP_HEADERS` | Objet JSON d'en-tetes (ex : `{"Authorization":"App xxx"}`) |
+| `SMS_HTTP_BODY` | Modele du corps / de la requete (voir plus bas) |
 
-En mode `console`, les SMS sont ecrits dans les logs (aucun cout).
+En mode `console`, les SMS sont ecrits dans les logs (aucun cout). Au demarrage,
+l'API **avertit dans les logs** quand une passerelle est choisie mais incomplete
+(`SMS_PROVIDER=africastalking` sans cles, `SMS_PROVIDER=http` sans URL...) : c'est
+la cause n°1 des « code incorrect » alors que le code a bien ete cree en base.
+
+### Brancher un vrai fournisseur SMS
+
+Aucun code a ecrire dans les deux cas : tout se regle par variables
+d'environnement (redemarrage du service `api`, pas de redeploiement).
+
+1. **Africa's Talking** (integre, couvre le Tchad selon l'editeur — a confirmer
+   aupres de leur support avant l'ouverture publique) :
+
+   ```bash
+   SMS_PROVIDER=africastalking
+   SMS_SENDER_ID=BODOGUI                # expéditeur enregistré (alphanumérique)
+   AFRICASTALKING_USERNAME=bodogui      # utilisateur de la console
+   AFRICASTALKING_API_KEY=atsk_xxxxxxxx
+   ```
+
+2. **N'importe quel autre fournisseur** (agrégateur local tchadien, Termii,
+   Infobip, passerelle d'un opérateur...) avec `SMS_PROVIDER=http`. Le corps est
+   un modèle où sont remplacés :
+
+   | Jeton | Valeur |
+   | --- | --- |
+   | `{{to}}` | Numéro E.164 (`+23566000000`) |
+   | `{{to_digits}}` | Chiffres seuls (`23566000000`, certains fournisseurs refusent le `+`) |
+   | `{{body}}` | Texte du SMS (court, 160 caractères) |
+   | `{{from}}` | `SMS_SENDER_ID` |
+   | `{{app}}` | `APP_NAME` |
+
+   Exemple JSON (Termii et la plupart des agrégateurs) :
+
+   ```bash
+   SMS_PROVIDER=http
+   SMS_HTTP_URL=https://api.ng.termii.com/api/sms/send
+   SMS_HTTP_METHOD=POST
+   SMS_HTTP_HEADERS={"Content-Type":"application/json"}
+   SMS_HTTP_BODY={"to":"{{to_digits}}","from":"{{from}}","sms":"{{body}}","type":"plain","channel":"generic","api_key":"CLE_API"}
+   ```
+
+   Exemple formulaire (`application/x-www-form-urlencoded`) :
+
+   ```bash
+   SMS_PROVIDER=http
+   SMS_HTTP_URL=https://passerelle.example.td/send
+   SMS_HTTP_HEADERS={"Content-Type":"application/x-www-form-urlencoded","Authorization":"Bearer CLE"}
+   SMS_HTTP_BODY=to={{to_digits}}&message={{body}}
+   ```
+
+   Le format est deduit de `Content-Type` : `application/json` (defaut) échappe
+   les valeurs (guillemets, accents, sauts de ligne) pour que le corps reste un
+   JSON valide ; `application/x-www-form-urlencoded` encode les valeurs en URL ;
+   sinon la valeur est insérée telle quelle (utile dans les en-têtes). Avec
+   `SMS_HTTP_METHOD=GET`, le modèle est placé dans l'URL (chaîne de requête).
+
+   Le fournisseur doit répondre en `2xx`, sinon l'envoi est journalisé en erreur
+   (`HTTP <statut>`) **sans bloquer la réponse** : l'utilisateur peut redemander
+   un code. L'identifiant de message renvoyé (`message_id`, `messageId`, `sid`,
+   `id`) est conservé dans les logs.
+
+### Cout des SMS
+
+- **Gratuit** : `SMS_PROVIDER=console` (le code s'affiche dans les logs du service
+  `api`) et la connexion de test `TEST_LOGIN_PHONES` + `TEST_LOGIN_CODE`. Aucun
+  SMS, aucun coût : idéal pour la recette, la formation et les démonstrations.
+- **Premiers vrais SMS** : la plupart des agrégateurs offrent un crédit d'essai ou
+  un environnement de test à l'inscription (Africa's Talking, Termii, Infobip,
+  Twilio). Comptez ensuite de l'ordre de 15 à 50 FCFA par SMS vers le Tchad selon
+  le fournisseur et le volume — à confirmer avec leur grille tarifaire, qui
+  change par pays. Un seul SMS suffit par connexion (le modèle OTP tient en un
+  SMS) et les numéros de recette ne consomment aucun crédit.
+- **Comparer sans s'engager** : `SMS_PROVIDER=http` permet d'essayer plusieurs
+  passerelles en changeant seulement `SMS_HTTP_*`.
 
 ### Se connecter sans passerelle SMS (recette)
 

@@ -46,13 +46,22 @@ const schema = z.object({
   TEST_LOGIN_PHONES: z.string().default(''),
   TEST_LOGIN_CODE: z.string().default(''),
 
-  SMS_PROVIDER: z.enum(['console', 'africastalking', 'twilio']).default('console'),
+  SMS_PROVIDER: z.enum(['console', 'africastalking', 'twilio', 'http']).default('console'),
   SMS_SENDER_ID: z.string().default('BODOGUI'),
   AFRICASTALKING_USERNAME: z.string().optional().default(''),
   AFRICASTALKING_API_KEY: z.string().optional().default(''),
   TWILIO_ACCOUNT_SID: z.string().optional().default(''),
   TWILIO_AUTH_TOKEN: z.string().optional().default(''),
   TWILIO_FROM: z.string().optional().default(''),
+  // Passerelle HTTP generique : brancher N'IMPORTE QUEL fournisseur (agregateur
+  // tchadien, Termii, Infobip...) sans redeployer de code. SMS_HTTP_BODY est un
+  // modele ou {{to}}, {{to_digits}}, {{body}}, {{from}} et {{app}} sont
+  // remplaces, avec l'echappement du format annonce par `Content-Type` (JSON par
+  // defaut). Voir docs/ENVIRONMENT.md, « Brancher un vrai fournisseur SMS ».
+  SMS_HTTP_URL: z.string().optional().default(''),
+  SMS_HTTP_METHOD: z.enum(['POST', 'GET']).default('POST'),
+  SMS_HTTP_HEADERS: z.string().optional().default(''),
+  SMS_HTTP_BODY: z.string().optional().default(''),
 
   STORAGE_DRIVER: z.enum(['local', 'minio', 'b2']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./var/storage'),
@@ -145,6 +154,32 @@ if (raw.TEST_LOGIN_CODE && !testLoginCode) {
     `[bodogui] TEST_LOGIN_CODE invalide (4 a 8 chiffres attendus, recu « ${raw.TEST_LOGIN_CODE} ») : connexion de test DESACTIVEE, l'API demarre normalement.`,
   );
 }
+
+/**
+ * Signale une passerelle SMS choisie mais incomplete : c'est la cause n°1 des
+ * « code incorrect » en recette (le code est bien cree en base, mais aucun SMS
+ * ne part). On ne bloque pas le demarrage : la connexion de test et le reste de
+ * l'API doivent rester utilisables.
+ * @param {Record<string, string>} source variables brutes
+ */
+function warnIfSmsIncomplete(source) {
+  const required =
+    source.SMS_PROVIDER === 'africastalking'
+      ? ['AFRICASTALKING_USERNAME', 'AFRICASTALKING_API_KEY']
+      : source.SMS_PROVIDER === 'twilio'
+        ? ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM']
+        : source.SMS_PROVIDER === 'http'
+          ? ['SMS_HTTP_URL']
+          : [];
+  const missing = required.filter((key) => !source[key]);
+  if (!missing.length) return;
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[bodogui] SMS_PROVIDER=${source.SMS_PROVIDER} mais ${missing.join(', ')} vide(s) : AUCUN SMS ne sera envoye. Voir docs/ENVIRONMENT.md (Brancher un vrai fournisseur SMS).`,
+  );
+}
+
+warnIfSmsIncomplete(raw);
 
 export const env = {
   ...raw,

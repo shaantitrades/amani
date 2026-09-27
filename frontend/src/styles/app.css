@@ -14,6 +14,10 @@
   --wa-danger: #c0392b;
   --radius: 14px;
   --touch: 60px;
+  /* Hauteur de la barre du haut collante : sert aussi de marge de defilement
+     (`scroll-margin-top`) pour qu'un champ ramene dans la vue par le navigateur
+     ne se retrouve jamais cache DERRIERE la barre pendant la saisie. */
+  --topbar-min: 64px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -67,7 +71,7 @@ img {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 64px;
+  min-height: var(--topbar-min);
   margin: 0 -12px 12px;
   padding: 6px 12px;
   background: var(--wa-green-dark);
@@ -477,6 +481,18 @@ img {
 .input:focus {
   outline: none;
   border-color: var(--wa-green);
+}
+
+/* La barre du haut est collante : quand le navigateur ramene un champ dans la
+   vue (focus, ouverture du clavier), il doit le laisser SOUS la barre. Sans ces
+   marges, le champ passe derriere et l'utilisateur ne voit plus ce qu'il tape
+   (numero de telephone, code SMS). Le calcul JS fait le reste
+   (frontend/src/lib/keyboard.js) pour les navigateurs qui ignorent ces marges. */
+.input,
+textarea,
+select {
+  scroll-margin-top: calc(var(--topbar-min) + 8px);
+  scroll-margin-bottom: 120px;
 }
 
 .input--phone,
@@ -1210,11 +1226,13 @@ img {
 }
 
 /* Bloc champ + bouton d'action : regroupe ce qui doit rester visible quand le
-   clavier du telephone s'ouvre (le scroll-into-view vise ce bloc). */
+   clavier du telephone s'ouvre (`frontend/src/lib/keyboard.js` ramene ce bloc
+   sous la barre du haut, sans jamais cacher le champ). */
 .login__actions {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  scroll-margin-top: calc(var(--topbar-min) + 8px);
   scroll-margin-bottom: 12px;
 }
 

@@ -5,6 +5,7 @@ import { t } from '../i18n/index.js';
 import { api } from '../lib/api.js';
 import { afterLoginPath } from '../lib/chat.js';
 import { dialCode } from '../lib/format.js';
+import { keepFieldVisible } from '../lib/keyboard.js';
 import { BigButton, Field, TopBar } from '../components/ui.jsx';
 
 /**
@@ -27,15 +28,28 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0);
   // Ecran demande avant l'inscription (ex. /ad/<id> recu par un lien partage).
   const from = location.state?.from;
-  // Le clavier du telephone recouvre le bas de l'ecran : des que le champ prend
-  // le focus, on ramene le bloc champ + bouton au centre de la zone visible,
-  // sinon l'action principale reste cachee sous le clavier.
+  // Le clavier recouvre le bas de l'ecran et la barre du haut est collante : des
+  // que le champ prend le focus, on ramene le champ ET le bouton dans la zone
+  // visible, sans jamais laisser le champ passer SOUS la barre du haut (sinon il
+  // disparait pendant toute la saisie du numero).
   const actionsRef = useRef(null);
+  const fieldRef = useRef(null);
+  const keepFieldOnScreen = () => keepFieldVisible({ field: fieldRef.current, action: actionsRef.current });
   const keepActionsVisible = () => {
-    setTimeout(() => {
-      actionsRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }, 300);
+    // Le clavier met 200 a 500 ms a s'ouvrir selon le telephone : on repasse
+    // plusieurs fois, chaque passage restant sans effet si tout est deja visible.
+    for (const delay of [90, 280, 560]) setTimeout(keepFieldOnScreen, delay);
   };
+
+  useEffect(() => {
+    // Navigateurs recents : la zone visible change quand le clavier s'ouvre ou
+    // se ferme. On recalcule alors (l'ancien Android 5 n'a pas visualViewport).
+    const viewport = typeof window === 'undefined' ? null : window.visualViewport;
+    if (!viewport) return undefined;
+    viewport.addEventListener('resize', keepFieldOnScreen);
+    return () => viewport.removeEventListener('resize', keepFieldOnScreen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (countdown <= 0) return undefined;
@@ -96,6 +110,7 @@ export default function Login() {
           <div className="login__actions" ref={actionsRef}>
             <Field>
               <input
+                ref={fieldRef}
                 className="input input--phone"
                 type="tel"
                 inputMode="tel"
@@ -126,6 +141,7 @@ export default function Login() {
           <div className="login__actions" ref={actionsRef}>
             <Field>
               <input
+                ref={fieldRef}
                 className="input input--code"
                 type="text"
                 inputMode="numeric"

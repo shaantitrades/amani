@@ -99,6 +99,116 @@ async function sendViaTwilio({ to, body }) {
   return { ok: true, provider: 'twilio', providerId: data.sid };
 }
 
+/** Valeurs remplacables dans un modele HTTP (`{{to}}`, `{{body}}`...). */
+export function httpTemplateValues({ to, body }) {
+  const gateway = toGatewayNumber(to);
+  return {
+    to: gateway,
+    to_digits: gateway.replace(/\D/g, ''),
+    body,
+    from: env.SMS_SENDER_ID,
+    app: env.APP_NAME,
+  };
+}
+
+/**
+ * Remplit un modele HTTP en ECHAPPANT les valeurs selon le format annonce par
+ * `Content-Type` :
+ *  - `json` : echappement JSON (guillemets, accents, sauts de ligne) pour que le
+ *    corps reste un JSON valide, meme avec un texte libre ;
+ *  - `form` : encodage URL (application/x-www-form-urlencoded) ;
+ *  - `text` : valeur brute (en-tetes HTTP).
+ * Un jeton inconnu est laisse tel quel : la passerelle signalera l'erreur au
+ * premier envoi, sans casser le reste de l'application.
+ * Fonction pure, testable sans reseau.
+ * @param {string} template
+ * @param {Record<string, string>} values
+ * @param {'json'|'form'|'text'} [format]
+ * @returns {string}
+ */
+export function renderHttpTemplate(template, values, format = 'json') {
+  const escape = (value) => {
+    const text = String(value === undefined || value === null ? '' : value);
+    if (format === 'json') return JSON.stringify(text).slice(1, -1);
+    if (format === 'form') return encodeURIComponent(text);
+    return text;
+  };
+  return String(template === undefined || template === null ? '' : template).replace(
+    /\{\{\s*([a-z_]+)\s*\}\}/gi,
+    (match, key) => {
+      const name = String(key).toLowerCase();
+      return Object.prototype.hasOwnProperty.call(values, name) ? escape(values[name]) : match;
+    },
+  );
+}
+
+/**
+ * En-tetes HTTP personnalises : objet JSON (les valeurs peuvent contenir des
+ * jetons, par exemple `{"Authorization":"Bearer {{api_key}}"}`).
+ * @param {string} raw
+ * @param {Record<string, string>} values
+ * @returns {Record<string, string>}
+ */
+export function parseHttpHeaders(raw, values) {
+  if (!raw) return {};
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new AppError(
+      500,
+      'sms_not_configured',
+      'SMS_HTTP_HEADERS doit etre un objet JSON, par exemple {"Authorization":"Bearer xxx"}',
+    );
+  }
+  return Object.fromEntries(
+    Object.entries(parsed).map(([key, value]) => [key, renderHttpTemplate(String(value), values, 'text')]),
+  );
+}
+
+/** Identifiant de message renvoye par la passerelle (journalisation). */
+export function extractProviderId(text) {
+  try {
+    const data = JSON.parse(text);
+    return (
+      data?.message_id || data?.messageId || data?.sid || data?.id || data?.data?.id || data?.data?.message_id || undefined
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Envoi par passerelle HTTP generique : n'importe quel fournisseur (agregateur
+ * tchadien, Termii, Infobip...) se branche par configuration, sans redeployer de
+ * code. Voir docs/ENVIRONMENT.md, « Brancher un vrai fournisseur SMS ».
+ */
+async function sendViaHttp({ to, body }) {
+  if (!env.SMS_HTTP_URL) {
+    throw new AppError(500, 'sms_not_configured', "SMS_HTTP_URL n'est pas renseignee");
+  }
+  const values = httpTemplateValues({ to, body });
+  const headers = { Accept: 'application/json', ...parseHttpHeaders(env.SMS_HTTP_HEADERS, values) };
+  const contentType = String(headers['Content-Type'] || headers['content-type'] || 'application/json');
+  const format = contentType.includes('json') ? 'json' : contentType.includes('form') ? 'form' : 'text';
+  const template = env.SMS_HTTP_BODY || '{{body}}';
+  const isGet = env.SMS_HTTP_METHOD === 'GET';
+  const url = isGet
+    ? `${env.SMS_HTTP_URL}${env.SMS_HTTP_URL.includes('?') ? '&' : '?'}${renderHttpTemplate(template, values, 'form')}`
+    : env.SMS_HTTP_URL;
+  const res = await fetch(url, {
+    method: env.SMS_HTTP_METHOD,
+    headers,
+    body: isGet ? undefined : renderHttpTemplate(template, values, format),
+  });
+  const text = await res.text().catch(() => '');
+  if (!res.ok) {
+    throw new AppError(502, 'sms_provider_error', `HTTP ${res.status} ${text.slice(0, 160)}`.trim());
+  }
+  logger.info({ provider: 'http', status: res.status }, 'SMS envoye par passerelle HTTP');
+  return { ok: true, provider: 'http', providerId: extractProviderId(text) };
+}
+
 /**
  * Envoie un SMS via la passerelle configuree.
  * @returns {Promise<{ok: boolean, provider: string, providerId?: string, simulated?: boolean}>}
@@ -110,9 +220,19 @@ export async function sendSms({ to, body }) {
       return sendViaAfricaTalking(payload);
     case 'twilio':
       return sendViaTwilio(payload);
+    case 'http':
+      return sendViaHttp(payload);
     default:
       return sendViaConsole(payload);
   }
 }
 
-export default { sendSms, renderTemplate, SMS_TEMPLATES };
+export default {
+  sendSms,
+  renderTemplate,
+  SMS_TEMPLATES,
+  httpTemplateValues,
+  renderHttpTemplate,
+  parseHttpHeaders,
+  extractProviderId,
+};
