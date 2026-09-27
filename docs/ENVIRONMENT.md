@@ -95,6 +95,13 @@ l'API **avertit dans les logs** quand un canal est choisi mais incomplet
 `WHATSAPP_TEMPLATE`, secours inutilisable...) : c'est la cause n°1 des « code
 incorrect » alors que le code a bien ete cree en base.
 
+> **Une variable ne suffit pas à la rendre active.** Coolify en mode
+> *Docker Compose* ne transmet au conteneur `api` que les variables listees dans
+> `environment:` de [`docker-compose.yml`](../docker-compose.yml). Toute variable
+> ajoutee ici (WhatsApp, canal de secours, passerelle HTTP, `SMS_HTTP_*`...) doit
+> donc y etre recopiee : sinon l'API ne la voit pas et l'avertissement de
+> demarrage la signale comme vide.
+
 ### Brancher un vrai fournisseur SMS
 
 Aucun code a ecrire dans les deux cas : tout se regle par variables
