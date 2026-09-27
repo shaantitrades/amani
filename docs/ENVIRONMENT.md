@@ -2,25 +2,46 @@
 
 Toutes les variables sont lues par `backend/src/config/env.js` (validation zod au demarrage :
 l'API refuse de demarrer si une valeur obligatoire manque ou est invalide).
+Une configuration invalide ne rend plus le conteneur `api` muet : la cause est publiee en JSON
+sur `/api/v1/healthz` (voir « Diagnostic de demarrage »).
 Le frontend, lui, ne lit que des variables `VITE_*` (voir la section Frontend en fin de page).
 
 ## Obligatoires en production
 
 | Variable | Exemple | Role |
 | --- | --- | --- |
-| `DATABASE_URL` | `postgres://bodogui:...@db:5432/bodogui` | Connexion PostgreSQL |
-| `JWT_SECRET` | `openssl rand -hex 32` | Signature des jetons **et** hachage des codes OTP |
-| `POSTGRES_PASSWORD` | `openssl rand -hex 24` | Utilise par l'image PostgreSQL du compose (hexadecimal uniquement) |
+| `JWT_SECRET` | `openssl rand -hex 32` | Signature des jetons **et** hachage des codes OTP (16 caracteres minimum) |
+| `POSTGRES_PASSWORD` | `openssl rand -hex 24` | Mot de passe PostgreSQL (service `db` du compose) |
 | `CORS_ORIGINS` | `https://bodogui.com,https://app.bodogui.com` | Origines autorisees (vide = toutes, avec un avertissement au demarrage) |
 | `PUBLIC_WEB_URL` | `https://bodogui.com` | Liens dans les SMS |
 | `PUBLIC_API_URL` | `https://api.bodogui.com` | Liens profonds |
 
-Avec `docker-compose.yml`, `DATABASE_URL` est **construite automatiquement** a partir de
-`POSTGRES_USER`, `POSTGRES_PASSWORD` et `POSTGRES_DB` (service `db` du compose) : ne la
-definissez donc pas dans Coolify. Le mot de passe est insere tel quel dans l'URL, donc utilisez
-un mot de passe **hexadecimal** (`openssl rand -hex 24`) : un `@`, `:`, `/`, `+` ou `=`
-(mot de passe base64) casserait la connexion. Meme remarque pour `REDIS_URL` : le compose pointe
-deja vers le service `redis` interne.
+La connexion PostgreSQL n'est plus assemblee a la main dans le compose : celui-ci transmet
+`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` sous forme de variables `PGHOST`, `PGPORT`,
+`PGUSER`, `PGPASSWORD`, `PGDATABASE`, et l'API construit l'URL en **encodant** le mot de passe
+(`encodeURIComponent`). Un mot de passe en base64 (`openssl rand -base64`, qui contient `+`, `/`,
+`=` ou `@`) fonctionne donc : l'important est qu'il soit **identique** a celui qui a cree le volume
+`db-data`. Ne definissez `DATABASE_URL` que pour viser un autre serveur : elle est alors utilisee
+telle quelle. `REDIS_URL` pointe deja vers le service `redis` interne.
+
+## Diagnostic de demarrage (API)
+
+Le conteneur `api` ne meurt plus en silence : un demarrage impossible reste lisible depuis le site.
+
+| Situation | Comportement | Ou lire la cause |
+| --- | --- | --- |
+| Configuration invalide (variable manquante, `JWT_SECRET` trop court, `DATABASE_URL` illisible) | `src/start.js` lance un **serveur de diagnostic** : toute requete repond `503` avec la cause en JSON | `<domaine>/api/v1/healthz` et logs du service `api` (banniere `DEMARRAGE IMPOSSIBLE`) |
+| Postgres injoignable ou mot de passe refuse | L'API demarre en **mode degrade** : elle repond, mais `checks.database` vaut `false` | `<domaine>/api/v1/healthz` (`startup.migrations`, `startup.error`, `startup.hint`) |
+
+| Variable | Defaut | Description |
+| --- | --- | --- |
+| `STRICT_STARTUP` | `0` | `1` : ancien comportement, le conteneur sort en erreur si la base est injoignable (l'orchestrateur voit l'echec, mais Nginx renvoie 502 sans explication) |
+| `MIGRATE_ATTEMPTS` | `12` | Tentatives de migration au demarrage (Postgres peut mettre quelques secondes a accepter les connexions apres un redemarrage) |
+| `MIGRATE_RETRY_MS` | `5000` | Delai entre deux tentatives |
+
+Le serveur de diagnostic repond volontairement `503` (et non `200`) : la sonde Coolify signale
+l'anomalie tout en laissant le conteneur vivant, ce qui permet de lire la cause dans un navigateur.
+
 
 ## Generales
 

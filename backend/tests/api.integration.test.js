@@ -101,7 +101,12 @@ test('parcours complet Bodogui', { skip: !RUN_DB_TESTS ? 'RUN_DB_TESTS=1 requis 
     assert.ok(res.body.districts.some((d) => d.id === district.id));
     assert.equal(res.body.features.maxPhotos, 6);
     assert.equal(res.body.features.maxAudioSeconds, 60);
-    assert.ok(res.body.languages.length >= 4);
+    // Langues du pilote (voir services/voice.js) : la sara a ete retiree faute
+    // de validation par des locuteurs natifs.
+    assert.deepEqual(
+      res.body.languages.map((l) => l.code).sort(),
+      ['ar', 'ff', 'fr'],
+    );
   });
 
   // ---- Inscription par SMS -------------------------------------------------

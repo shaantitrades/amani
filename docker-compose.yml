@@ -70,7 +70,22 @@ services:
       NODE_ENV: production
       PORT: '4000'
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: postgres://${POSTGRES_USER:-bodogui}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-bodogui}
+      # Connexion PostgreSQL : les variables PG* sont transmises telles quelles
+      # et l'API construit elle-meme l'URL en encodant le mot de passe
+      # (src/config/env.js > buildDatabaseUrl). Ne PAS fabriquer DATABASE_URL
+      # ici : un mot de passe base64 (+, /, =) couperait l'URL avant l'hote
+      # (`getaddrinfo ENOTFOUND ...`) et l'API ne demarrerait pas.
+      DATABASE_URL: ${DATABASE_URL:-}
+      PGHOST: db
+      PGPORT: '5432'
+      PGUSER: ${POSTGRES_USER:-bodogui}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?mot de passe PostgreSQL obligatoire}
+      PGDATABASE: ${POSTGRES_DB:-bodogui}
+      # 1 = comportement strict : sortir en erreur si la base est injoignable.
+      # Par defaut (0) l'API demarre quand meme et publie la cause sur
+      # /api/v1/healthz au lieu de laisser un 502 opaque cote Nginx.
+      STRICT_STARTUP: ${STRICT_STARTUP:-0}
+      MIGRATE_ATTEMPTS: ${MIGRATE_ATTEMPTS:-12}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obligatoire (openssl rand -hex 32)}
       JWT_TTL: ${JWT_TTL:-30d}

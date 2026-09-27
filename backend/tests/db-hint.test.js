@@ -1,7 +1,13 @@
 import './helpers/bootstrap.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startupHint } from '../src/db/migrate.js';
+import { startupHint } from '../src/lib/startup-hint.js';
+import { startupHint as viaMigrate } from '../src/db/migrate.js';
+
+test('l\'aide est aussi reexportee par db/migrate.js (appelants historiques)', () => {
+  assert.equal(typeof viaMigrate, 'function');
+  assert.equal(viaMigrate(new Error('password authentication failed')), startupHint(new Error('password authentication failed')));
+});
 
 test('mot de passe refuse : l\'aide renvoie vers POSTGRES_PASSWORD et le volume db-data', () => {
   const hint = startupHint(new Error('password authentication failed for user "bodogui"'));

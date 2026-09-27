@@ -3,6 +3,9 @@ import logger from './lib/logger.js';
 import { createApp } from './app.js';
 import { initCache, closeCache, isRedisReady } from './lib/cache.js';
 import { closePool, healthCheck } from './lib/db.js';
+import { runMigrations } from './db/migrate.js';
+import { startupHint } from './lib/startup-hint.js';
+import { setMigrationFailure, setMigrationsReady } from './lib/startup-state.js';
 import { initPush } from './services/push.js';
 import { dispatchQueued } from './services/notifications.js';
 import { purgeExpiredOtp } from './services/otp.js';
@@ -12,6 +15,37 @@ const app = createApp();
 let workerTimer = null;
 let purgeTimer = null;
 let isDispatching = false;
+
+const MIGRATE_ATTEMPTS = Math.max(1, Number(process.env.MIGRATE_ATTEMPTS || 12));
+const MIGRATE_RETRY_MS = Math.max(250, Number(process.env.MIGRATE_RETRY_MS || 5000));
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Migrations avec nouvelles tentatives.
+ * Postgres peut refuser les connexions quelques secondes apres un redemarrage
+ * du service `db` : sans tentatives, un demarrage concurrent suffisait a tuer
+ * l'API (et donc a rendre tout /api/v1 indisponible).
+ */
+async function migrateWithRetry() {
+  for (let attempt = 1; attempt <= MIGRATE_ATTEMPTS; attempt += 1) {
+    try {
+      const applied = await runMigrations();
+      setMigrationsReady(applied.length);
+      logger.info({ attempt, applied: applied.length }, 'Migrations terminees');
+      return applied;
+    } catch (err) {
+      const last = attempt >= MIGRATE_ATTEMPTS;
+      logger.error(
+        { attempt, attempts: MIGRATE_ATTEMPTS, err: err.message, hint: startupHint(err) },
+        last ? 'Migration impossible' : 'Migration echouee, nouvel essai',
+      );
+      if (last) throw err;
+      await sleep(MIGRATE_RETRY_MS);
+    }
+  }
+  return [];
+}
 
 /**
  * Worker de notifications : relit la file `notifications` et envoie
@@ -52,9 +86,26 @@ function startWorkers() {
   logger.info('Workers demarres (notifications 30 s, purge OTP 24 h)');
 }
 
-async function start() {
+async function startServer() {
   initCache();
   initPush();
+
+  // Migrations AVANT le reste : le conteneur lancait auparavant
+  // `node src/db/migrate.js && node src/server.js`, donc le moindre echec de
+  // migration tuait l'API (502 opaque sur tout /api/v1, sans piste lisible).
+  // Desormais : tentatives multiples, puis demarrage en mode degrade dont la
+  // cause reste consultable sur /api/v1/healthz.
+  try {
+    await migrateWithRetry();
+  } catch (err) {
+    setMigrationFailure(err, startupHint(err));
+    if (process.env.STRICT_STARTUP === '1') throw err;
+    logger.error(
+      { err: err.message, hint: startupHint(err) },
+      "Migrations impossibles : l'API demarre en mode degrade (cause sur /api/v1/healthz)",
+    );
+  }
+
   startWorkers();
 
   const dbOk = await healthCheck().catch(() => false);
@@ -94,9 +145,6 @@ async function start() {
   process.on('unhandledRejection', (reason) => logger.error({ reason }, 'Promesse rejetee non geree'));
 }
 
-start().catch((err) => {
-  logger.fatal({ err: err.message, stack: err.stack }, 'Echec du demarrage');
-  process.exit(1);
-});
+export { startServer };
 
 export default app;

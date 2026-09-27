@@ -39,5 +39,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-# Les migrations sont jouees au demarrage (idempotentes) avant de lancer l'API.
-CMD ["sh", "-c", "node src/db/migrate.js && node src/server.js"]
+# Les migrations sont jouees au demarrage par src/start.js, avec tentatives.
+# Un echec ne tue plus le conteneur (Nginx ne renvoie donc plus un 502 opaque) :
+# la cause est publiee sur /api/v1/healthz. STRICT_STARTUP=1 restaure la sortie
+# en erreur.
+CMD ["node", "src/start.js"]

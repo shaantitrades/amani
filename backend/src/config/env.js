@@ -19,7 +19,15 @@ const schema = z.object({
   PUBLIC_WEB_URL: z.string().default('http://localhost:5173'),
   PUBLIC_API_URL: z.string().default('http://localhost:4000'),
 
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL est obligatoire'),
+  // DATABASE_URL est prioritaire. A defaut elle est construite a partir des
+  // variables PG* (voir buildDatabaseUrl) : le compose peut ainsi transmettre
+  // le mot de passe brut, encode correctement pour l'URL.
+  DATABASE_URL: z.string().optional().default(''),
+  PGUSER: z.string().optional().default(''),
+  PGPASSWORD: z.string().optional().default(''),
+  PGHOST: z.string().optional().default(''),
+  PGPORT: z.string().optional().default(''),
+  PGDATABASE: z.string().optional().default(''),
   DB_POOL_MAX: int(10),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
@@ -87,10 +95,39 @@ if (!parsed.success) {
   console.error(
     `[bodogui] Configuration invalide (verifiez vos variables d'environnement / fichier .env) :\n${details}`,
   );
-  process.exit(1);
+  // On LEVE l'erreur (au lieu de sortir ici) pour que src/start.js puisse
+  // demarrer un serveur de diagnostic et rendre la cause lisible dans le
+  // navigateur : sinon le conteneur mourait et le site renvoyait 502 partout.
+  const error = new Error(`Configuration invalide (${parsed.error.issues.length} variable(s) en cause)`);
+  error.configIssues = parsed.error.issues;
+  throw error;
 }
 
 const raw = parsed.data;
+
+/**
+ * Construit l'URL PostgreSQL a partir des variables PG* quand DATABASE_URL
+ * n'est pas fournie.
+ *
+ * Le mot de passe est ENCODE (encodeURIComponent) : un mot de passe genere par
+ * `openssl rand -base64` contient +, / ou = et une URL assemblee a la main est
+ * alors coupee avant l'hote (`getaddrinfo ENOTFOUND <debut du mot de passe>`),
+ * ce qui faisait echouer le demarrage de l'API alors que Postgres, lui,
+ * acceptait parfaitement ce mot de passe.
+ *
+ * @param {Record<string, string>} source variables brutes (DATABASE_URL, PG*)
+ * @returns {string}
+ */
+export function buildDatabaseUrl(source = {}) {
+  if (source.DATABASE_URL) return source.DATABASE_URL;
+  const user = source.PGUSER || 'bodogui';
+  const password = source.PGPASSWORD ? `:${encodeURIComponent(source.PGPASSWORD)}` : '';
+  const host = source.PGHOST || 'localhost';
+  const port = source.PGPORT || '5432';
+  const database = source.PGDATABASE || user;
+  return `postgres://${encodeURIComponent(user)}${password}@${host}:${port}/${database}`;
+}
+
 
 /** Numeros autorises a la connexion de test (code fixe, sans SMS). */
 const testLoginPhones = parsePhoneList(raw.TEST_LOGIN_PHONES);
@@ -111,6 +148,8 @@ if (raw.TEST_LOGIN_CODE && !testLoginCode) {
 
 export const env = {
   ...raw,
+  // Toujours renseignee (DATABASE_URL fournie, sinon construite depuis PG*).
+  DATABASE_URL: buildDatabaseUrl(raw),
   isProd: raw.NODE_ENV === 'production',
   isTest: raw.NODE_ENV === 'test',
   corsOrigins: raw.CORS_ORIGINS.split(',')

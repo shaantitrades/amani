@@ -22,8 +22,9 @@
 
 | Dossier | Contenu |
 | --- | --- |
-| `src/config/env.js` | Chargement et validation stricte des variables (zod) |
-| `src/lib/` | `db` (pool + transactions), `cache` (Redis + repli memoire), `phone` (E.164 Tchad), `crypto` (OTP), `visibility` (filtres blocage), `errors`, `pagination`, `serialize` |
+| `src/start.js` | Point d'entree du conteneur : migrations (avec tentatives) puis API ; bascule sur un **serveur de diagnostic** si le demarrage echoue |
+| `src/config/env.js` | Chargement et validation stricte des variables (zod) ; construit `DATABASE_URL` depuis les variables `PG*` en encodant le mot de passe |
+| `src/lib/` | `db` (pool + transactions), `cache` (Redis + repli memoire), `phone` (E.164 Tchad), `crypto` (OTP), `visibility` (filtres blocage), `startup-hint` / `startup-state` / `diagnostic-server` (demarrage lisible sur `/api/v1/healthz`), `errors`, `pagination`, `serialize` |
 | `src/services/` | `otp`, `tokens`, `blocks`, `ads`, `groups`, `notifications`, `sms`, `push`, `storage`, `media`, `stt`, `voice` |
 | `src/middleware/` | `auth` (JWT + bannissement), `validate` (zod), `rateLimit`, `upload` (multer), `error` |
 | `src/routes/` | `auth`, `users`, `ads`, `media`, `media-proxy`, `groups`, `blocks`, `reports`, `messages`, `search`, `admin`, `meta`, `health` |
