@@ -12,6 +12,9 @@ import logger from '../lib/logger.js';
  * Aucun email, aucun mot de passe, aucune piece d'identite.
  */
 
+/** Code fixe de recette : 4 a 8 chiffres (meme regle que `config/env.js`). */
+const TEST_LOGIN_CODE_PATTERN = /^\d{4,8}$/;
+
 async function enforceRateLimit(cacheKey, max, windowSeconds) {
   const cache = getCache();
   let count;
@@ -29,6 +32,8 @@ async function enforceRateLimit(cacheKey, max, windowSeconds) {
  * Code a envoyer pour ce numero :
  *  - numero de test (`TEST_LOGIN_PHONES`) : code fixe (`TEST_LOGIN_CODE`), aucun SMS ;
  *  - sinon : code aleatoire a 5 chiffres.
+ * Un code de test mal forme (moins de 4 chiffres, lettres...) est ignore : on ne
+ * cree jamais de code trivial a cause d'une faute de frappe dans la configuration.
  * Fonction pure (aucune base de donnees) pour rester testable.
  * @param {string} phone numero saisi ou E.164
  * @param {{testPhones?: string[], testCode?: string}} [opts]
@@ -37,7 +42,8 @@ async function enforceRateLimit(cacheKey, max, windowSeconds) {
 export function resolveOtpCode(phone, { testPhones = env.testLoginPhones, testCode = env.testLoginCode } = {}) {
   const normalized = normalizePhone(phone);
   const e164 = normalized.ok ? normalized.e164 : phone;
-  if (testCode && testPhones.length && normalized.ok && testPhones.includes(e164)) {
+  const codeIsValid = TEST_LOGIN_CODE_PATTERN.test(testCode || '');
+  if (codeIsValid && testPhones.length && normalized.ok && testPhones.includes(e164)) {
     return { code: testCode, simulated: true, phone: e164 };
   }
   return { code: generateOtp(5), simulated: false, phone: e164 };

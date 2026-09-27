@@ -79,6 +79,9 @@ Deux solutions, utilisables ensemble :
 > `TEST_LOGIN_PHONES` / `TEST_LOGIN_CODE` **doivent etre vides** en production
 > publique : un code fixe est un mot de passe partage. Le serveur ecrit un
 > avertissement au demarrage lorsque la connexion de test est active.
+> Un `TEST_LOGIN_CODE` mal saisi (moins de 4 chiffres, lettres, espaces) ne bloque
+> pas l'API : la connexion de test est simplement desactivee, avec un
+> avertissement au demarrage.
 
 
 ## Stockage des medias

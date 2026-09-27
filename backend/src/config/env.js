@@ -36,10 +36,7 @@ const schema = z.object({
   // autorises, sans passer par la passerelle SMS. A laisser vide en production
   // publique : voir docs/ENVIRONMENT.md.
   TEST_LOGIN_PHONES: z.string().default(''),
-  TEST_LOGIN_CODE: z
-    .string()
-    .default('')
-    .refine((v) => v === '' || /^\d{4,8}$/.test(v), 'TEST_LOGIN_CODE doit contenir 4 a 8 chiffres'),
+  TEST_LOGIN_CODE: z.string().default(''),
 
   SMS_PROVIDER: z.enum(['console', 'africastalking', 'twilio']).default('console'),
   SMS_SENDER_ID: z.string().default('BODOGUI'),
@@ -98,6 +95,20 @@ const raw = parsed.data;
 /** Numeros autorises a la connexion de test (code fixe, sans SMS). */
 const testLoginPhones = parsePhoneList(raw.TEST_LOGIN_PHONES);
 
+/**
+ * Code fixe de recette : 4 a 8 chiffres. Une valeur invalide ne doit JAMAIS
+ * empecher l'API de demarrer (elle est en production et sert tout le site) :
+ * on desactive la connexion de test et on le signale dans les logs.
+ */
+const TEST_LOGIN_CODE_PATTERN = /^\d{4,8}$/;
+const testLoginCode = TEST_LOGIN_CODE_PATTERN.test(raw.TEST_LOGIN_CODE) ? raw.TEST_LOGIN_CODE : '';
+if (raw.TEST_LOGIN_CODE && !testLoginCode) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[bodogui] TEST_LOGIN_CODE invalide (4 a 8 chiffres attendus, recu « ${raw.TEST_LOGIN_CODE} ») : connexion de test DESACTIVEE, l'API demarre normalement.`,
+  );
+}
+
 export const env = {
   ...raw,
   isProd: raw.NODE_ENV === 'production',
@@ -106,10 +117,10 @@ export const env = {
     .map((s) => s.trim())
     .filter(Boolean),
   // Connexion de test : activee uniquement si une liste de numeros ET un code
-  // sont fournis (les deux sont vides par defaut).
+  // valide sont fournis (les deux sont vides par defaut).
   testLoginPhones,
-  testLoginCode: raw.TEST_LOGIN_CODE,
-  testLoginEnabled: Boolean(raw.TEST_LOGIN_CODE) && testLoginPhones.length > 0,
+  testLoginCode,
+  testLoginEnabled: Boolean(testLoginCode) && testLoginPhones.length > 0,
   storage: raw.STORAGE_DRIVER === 'b2'
     ? {
         driver: 'b2',
