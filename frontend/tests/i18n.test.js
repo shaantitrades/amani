@@ -32,6 +32,34 @@ test('t() retombe sur le francais quand la traduction manque', () => {
   assert.equal(t('fr', 'cle_inconnue'), 'cle_inconnue');
 });
 
+test('les messages d\'erreur de l\'API sont lisibles dans les 4 langues', () => {
+  // Les cles error_* viennent de l'API (voiceKey) : elles ne sont pas dans les
+  // dictionnaires mais dans strings/voice.js. Sans repli, l'utilisateur lisait
+  // la cle brute (« error_phone_invalid ») au lieu d'une phrase.
+  const keys = [
+    'error_generic',
+    'error_offline',
+    'error_phone_invalid',
+    'error_code_invalid',
+    'error_code_expired',
+    'error_code_rate_limited',
+    'error_rate_limited',
+    'error_forbidden',
+    'error_banned',
+    'error_too_many_photos',
+    'error_description_required',
+    'error_blocked_target',
+  ];
+  for (const lang of LANGUAGES.map((l) => l.code)) {
+    for (const key of keys) {
+      const value = t(lang, key);
+      assert.ok(value && value !== key, `${lang}.${key} doit afficher une phrase`);
+    }
+  }
+  // Une cle totalement inconnue reste affichee telle quelle (aucun texte vide).
+  assert.equal(t('fr', 'cle_inconnue'), 'cle_inconnue');
+});
+
 test('chaque langue possede les libelles des actions essentielles', () => {
   const essentials = ['sell', 'buy', 'groups', 'account', 'call', 'publish', 'speak', 'price', 'where', 'category'];
   for (const lang of LANGUAGES.map((l) => l.code)) {

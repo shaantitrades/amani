@@ -42,7 +42,10 @@ export default function Login() {
       setStep('code');
       setCountdown(60);
     } catch (err) {
-      notify(t(language, 'error_phone_invalid'), { kind: 'error', voiceKey: err.voiceKey });
+      // L'API renvoie la raison exacte (numero invalide, trop de demandes,
+      // erreur serveur) : on l'affiche au lieu d'accuser le numero a tort.
+      const key = err?.voiceKey || 'error_phone_invalid';
+      notify(t(language, key), { kind: 'error', voiceKey: key });
     } finally {
       setBusy(false);
     }
@@ -57,7 +60,8 @@ export default function Login() {
       await login(phone, code);
       navigate(afterLoginPath(from), { replace: true });
     } catch (err) {
-      notify(t(language, 'error_code_invalid'), { kind: 'error', voiceKey: err.voiceKey });
+      const key = err?.voiceKey || 'error_code_invalid';
+      notify(t(language, key), { kind: 'error', voiceKey: key });
     } finally {
       setBusy(false);
     }

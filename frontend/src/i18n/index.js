@@ -22,7 +22,10 @@ const TABLES = { fr, ar, ff, sar };
 
 export function t(lang, key) {
   const table = TABLES[lang] || TABLES.fr;
-  return table[key] || fr[key] || key;
+  // Les messages d'erreur (error_*) vivent dans strings/voice.js, le miroir des
+  // messages vocaux de l'API : sans ce repli, un toast afficherait la cle brute
+  // (« error_generic ») au lieu d'un texte comprehensible.
+  return table[key] || fr[key] || VOICE_PROMPT_TEXT[key] || key;
 }
 
 export function languageMeta(code) {
