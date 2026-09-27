@@ -164,7 +164,7 @@ vocal, fil d'annonces, recherche filtree, contact direct, **blocage/deblocage**,
   ("ne payez jamais avant d'avoir vu le produit").
 - **Hors ligne** : consultation de ses annonces, preparation d'une publication, envoi
   automatique des que la connexion revient (file IndexedDB + `client_uuid` idempotent).
-- **4 langues** : francais, arabe tchadien, fulfulde, sara (interface + messages vocaux).
+- **3 langues** : francais, arabe tchadien, fulfulde (interface + messages vocaux).
 
 ## Documentation
 

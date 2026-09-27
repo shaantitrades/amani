@@ -4,12 +4,12 @@
  */
 
 export const COUNTRIES = [
-  { code: 'TD', dial: '235', name: 'Tchad', digits: 8, languages: ['fr', 'ar', 'ff', 'sar'] },
+  { code: 'TD', dial: '235', name: 'Tchad', digits: 8, languages: ['fr', 'ar', 'ff'] },
   { code: 'CM', dial: '237', name: 'Cameroun', digits: 9, languages: ['fr', 'en'] },
   { code: 'NE', dial: '227', name: 'Niger', digits: 8, languages: ['fr', 'ff'] },
   { code: 'ML', dial: '223', name: 'Mali', digits: 8, languages: ['fr', 'ff'] },
   { code: 'BF', dial: '226', name: 'Burkina Faso', digits: 8, languages: ['fr', 'ff'] },
-  { code: 'CF', dial: '236', name: 'Centrafrique', digits: 8, languages: ['fr', 'sar'] },
+  { code: 'CF', dial: '236', name: 'Centrafrique', digits: 8, languages: ['fr'] },
 ];
 
 const DIAL_CODES = COUNTRIES.map((c) => c.dial);

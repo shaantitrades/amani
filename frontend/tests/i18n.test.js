@@ -13,11 +13,11 @@ import {
 } from '../src/i18n/index.js';
 import { makeIcon, readPngInfo } from '../scripts/generate-icons.mjs';
 
-test('les 4 langues du pilote sont disponibles', () => {
-  assert.equal(LANGUAGES.length, 4);
+test('les 3 langues du pilote sont disponibles', () => {
+  assert.equal(LANGUAGES.length, 3);
   assert.deepEqual(
     LANGUAGES.map((l) => l.code),
-    ['fr', 'ar', 'ff', 'sar'],
+    ['fr', 'ar', 'ff'],
   );
   assert.equal(languageMeta('ar').dir, 'rtl');
   assert.equal(isSupportedLanguage('zz'), false);
@@ -32,7 +32,7 @@ test('t() retombe sur le francais quand la traduction manque', () => {
   assert.equal(t('fr', 'cle_inconnue'), 'cle_inconnue');
 });
 
-test('les messages d\'erreur de l\'API sont lisibles dans les 4 langues', () => {
+test('les messages d\'erreur de l\'API sont lisibles dans les 3 langues', () => {
   // Les cles error_* viennent de l'API (voiceKey) : elles ne sont pas dans les
   // dictionnaires mais dans strings/voice.js. Sans repli, l'utilisateur lisait
   // la cle brute (« error_phone_invalid ») au lieu d'une phrase.
@@ -70,9 +70,9 @@ test('chaque langue possede les libelles des actions essentielles', () => {
   }
 });
 
-test('le quartier du profil est traduit dans les 4 langues', () => {
+test('le quartier du profil est traduit dans les 3 langues', () => {
   // Le quartier se choisit une seule fois (« Mon compte ») : il ne doit pas
-  // apparaitre en francais a un utilisateur arabophone, fulfulde ou sara.
+  // apparaitre en francais a un utilisateur arabophone, fulfulde.
   const codes = LANGUAGES.map((l) => l.code);
   assert.ok(codes.includes('fr'));
   for (const key of ['my_district', 'no_district']) {
@@ -85,11 +85,11 @@ test('le quartier du profil est traduit dans les 4 langues', () => {
   }
 });
 
-test('la discussion avec le vendeur est traduite dans les 4 langues', () => {
+test('la discussion avec le vendeur est traduite dans les 3 langues', () => {
   // Parler a un vendeur se fait dans Bodogui : le bouton DISCUTER, l'accroche
   // pre-remplie, le rappel de l'annonce et la raison de l'inscription ne
   // doivent jamais apparaitre en francais a un utilisateur arabophone,
-  // fulfulde ou sara.
+  // fulfulde.
   const codes = LANGUAGES.map((l) => l.code);
   assert.ok(codes.includes('fr'));
   for (const key of ['discuss', 'login_to_chat', 'about_ad', 'ad_intro_message']) {
@@ -111,10 +111,10 @@ test('la discussion avec le vendeur est traduite dans les 4 langues', () => {
   }
 });
 
-test('les actions sensibles du compte sont traduites dans les 4 langues', () => {
+test('les actions sensibles du compte sont traduites dans les 3 langues', () => {
   // « Mon compte » garde une zone sensible : le libelle qui l'ouvre, celui du
   // bouton de suppression et son avertissement doivent etre lisibles dans les
-  // 4 langues du pilote (la suppression efface annonces et messages).
+  // 3 langues du pilote (la suppression efface annonces et messages).
   const codes = LANGUAGES.map((l) => l.code);
   for (const key of ['account_options', 'delete_account', 'delete_account_hint', 'confirm_delete_account']) {
     assert.ok(t('fr', key) && t('fr', key) !== key, `fr.${key} manquant`);
@@ -126,7 +126,7 @@ test('les actions sensibles du compte sont traduites dans les 4 langues', () => 
   }
 });
 
-test('le changement de langue est confirme et traduit dans les 4 langues', () => {
+test('le changement de langue est confirme et traduit dans les 3 langues', () => {
   // La question de confirmation s'affiche dans la langue ACTUELLE : elle doit
   // donc exister partout, avec l'emplacement du nom de la langue visee.
   const codes = LANGUAGES.map((l) => l.code);
@@ -147,7 +147,7 @@ test('le changement de langue est confirme et traduit dans les 4 langues', () =>
   }
 });
 
-test('l\'installation obligatoire est expliquee dans les 4 langues', () => {
+test('l\'installation obligatoire est expliquee dans les 3 langues', () => {
   // Le portail d'installation remplace toute l'application : un visiteur qui ne
   // comprend ni le francais ni l'anglais doit savoir quoi faire.
   const codes = LANGUAGES.map((l) => l.code);
@@ -164,7 +164,7 @@ test('l\'installation obligatoire est expliquee dans les 4 langues', () => {
 
 test('promptUrl pointe vers les fichiers Opus par langue', () => {
   assert.equal(promptUrl('ad_published', 'fr'), '/voice/fr/ad_published.opus');
-  assert.equal(promptUrl('blocked', 'sar'), '/voice/sar/blocked.opus');
+  assert.equal(promptUrl('blocked', 'ff'), '/voice/ff/blocked.opus');
   assert.equal(promptUrl('blocked', 'zz'), '/voice/fr/blocked.opus');
 });
 

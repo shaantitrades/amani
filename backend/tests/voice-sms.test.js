@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import { SMS_TEMPLATES, renderTemplate, sendSms } from '../src/services/sms.js';
 import { VOICE_PROMPTS, isSupportedLanguage, languageMeta, promptText, promptUrl, manifest } from '../src/services/voice.js';
 
-test('les modeles SMS existent dans les 4 langues du pilote', () => {
+test('les modeles SMS existent dans les 3 langues du pilote', () => {
   for (const [kind, byLang] of Object.entries(SMS_TEMPLATES)) {
-    for (const lang of ['fr', 'ar', 'ff', 'sar']) {
+    for (const lang of ['fr', 'ar', 'ff']) {
       assert.ok(typeof byLang[lang] === 'function', `${kind}.${lang} manquant`);
     }
   }
@@ -55,7 +55,7 @@ test('chaque cle de message vocal a un script francais', () => {
 
 test('le manifeste vocal couvre toutes les langues et toutes les cles', () => {
   const langs = manifest();
-  assert.equal(langs.length, 4);
+  assert.equal(langs.length, 3);
   for (const l of langs) {
     assert.equal(l.prompts.length, Object.keys(VOICE_PROMPTS).length);
     assert.ok(l.baseUrl.endsWith('/'));

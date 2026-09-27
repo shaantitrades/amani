@@ -14,7 +14,6 @@ export const LANGUAGES = [
   { code: 'fr', label: 'Francais', native: 'Français', dir: 'ltr', flag: '🇫🇷', tts: 'fr-FR' },
   { code: 'ar', label: 'Arabe tchadien', native: 'عربي', dir: 'rtl', flag: '🇹🇩', tts: 'ar-SA' },
   { code: 'ff', label: 'Fulfulde', native: 'Fulfulde', dir: 'ltr', flag: '🇹🇩', tts: 'fr-FR' },
-  { code: 'sar', label: 'Sara', native: 'Sara', dir: 'ltr', flag: '🇹🇩', tts: 'fr-FR' },
 ];
 
 export const DEFAULT_LANGUAGE = 'fr';

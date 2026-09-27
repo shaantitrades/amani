@@ -65,7 +65,7 @@ test('changer de langue demande une confirmation', () => {
   // Autre langue : on confirme avant de basculer
   assert.equal(languageChangeRequest('fr', 'ar'), 'ar');
   assert.equal(languageChangeRequest('fr', 'ff'), 'ff');
-  assert.equal(languageChangeRequest('sar', 'fr'), 'fr');
+  assert.equal(languageChangeRequest('ff', 'fr'), 'fr');
   // Garde-fous : choix vide, absent ou non renseigne
   assert.equal(languageChangeRequest('fr', undefined), null);
   assert.equal(languageChangeRequest('fr', null), null);
@@ -76,12 +76,12 @@ test('la confirmation de langue nomme la langue visee', () => {
   const fr = 'Changer la langue en {language} ?';
   assert.equal(languageConfirmMessage(fr, 'Fulfulde'), 'Changer la langue en Fulfulde ?');
   assert.equal(languageConfirmMessage(fr, 'عربي'), 'Changer la langue en عربي ?');
-  assert.equal(languageConfirmMessage(fr, 'Sara'), 'Changer la langue en Sara ?');
+  assert.equal(languageConfirmMessage(fr, 'Arabe tchadien'), 'Changer la langue en Arabe tchadien ?');
   // Le placeholder ne doit jamais rester a l'ecran, ni deux espaces d'affilee
-  assert.ok(!languageConfirmMessage(fr, 'Sara').includes('{language}'));
+  assert.ok(!languageConfirmMessage(fr, 'Fulfulde').includes('{language}'));
   assert.equal(languageConfirmMessage(fr, ''), 'Changer la langue en ?');
   // Libelle absent : chaine vide plutot qu'un plantage
-  assert.equal(languageConfirmMessage(undefined, 'Sara'), '');
+  assert.equal(languageConfirmMessage(undefined, 'Fulfulde'), '');
 });
 
 test('les pastilles de langue ne basculent plus la langue directement', () => {

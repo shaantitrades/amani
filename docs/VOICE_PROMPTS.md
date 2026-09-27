@@ -22,7 +22,6 @@ voice/
   fr/   accueil.opus ...
   ar/
   ff/
-  sar/
 ```
 
 Les fichiers doivent etre deposes dans le stockage objet sous la cle

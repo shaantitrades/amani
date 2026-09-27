@@ -53,7 +53,7 @@ const DEMO_USERS = [
   { phone: '+23566000002', name: 'Moussa B.', language: 'ar', district: 'Chagoua' },
   { phone: '+23566000003', name: 'Halime C.', language: 'fr', district: 'Dembé' },
   { phone: '+23566000004', name: 'Brahim D.', language: 'ff', district: 'Klemat' },
-  { phone: '+23566000005', name: 'Ngarta E.', language: 'sar', district: 'Farcha' },
+  { phone: '+23566000005', name: 'Ngarta E.', language: 'ff', district: 'Farcha' },
   { phone: '+23566000006', name: 'Ali F. (compte suspendu)', language: 'fr', district: 'Atrone' },
 ];
 

@@ -82,7 +82,7 @@ a la meme personne dans la fenetre (10 minutes pour les messages vocaux).
 | `otp_codes` | Codes SMS haches (HMAC) avec expiration et compteur de tentatives |
 | `refresh_tokens` | Sessions longues revocables |
 | `districts` | Quartiers (profil, filtres du fil ; plus demandes a la publication) |
-| `categories` | Grille d'icones, libelles fr/ar/ff/sar |
+| `categories` | Grille d'icones, libelles fr/ar/ff |
 | `ads` | Annonces (prix, devise, vocal, transcription, geoloc, `client_uuid` idempotent) |
 | `ad_photos` | Photos WebP + vignettes (6 max) |
 | `groups`, `group_members`, `group_bans` | Groupes, roles, exclusions |
@@ -107,7 +107,7 @@ bannissements actifs.
 
 | Dossier | Contenu |
 | --- | --- |
-| `src/i18n/` | 4 langues (fr, ar, ff, sar) + catalogue des messages vocaux |
+| `src/i18n/` | 3 langues (fr, ar, ff) + catalogue des messages vocaux |
 | `src/lib/` | `api` (fetch + JWT + refresh), `idb` (IndexedDB), `outbox` (file hors ligne), `audio` (MediaRecorder Opus), `voice` (retour vocal), `image` (compression WebP), `geo`, `push`, `format`, `chat` (conversation interne, accroche d'annonce avec son lien, liens cliquables, retour apres inscription), `account` (zone sensible repliee : suppression de compte jamais a un seul appui) |
 | `src/components/` | `ui` (gros boutons, feuilles modales), `forms` (photos, clavier, categories, quartiers), `media` (vocal), `AdCard`, `ContactBar`, `ReportSheet`, `MapView` |
 | `src/pages/` | Welcome, Login, Home, Browse, AdDetail, Sell, Groups, GroupDetail, Messages, Account, MyAds, Blocked, Admin |

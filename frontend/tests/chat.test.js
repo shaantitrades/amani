@@ -68,7 +68,7 @@ test('adIntroText pre-remplit une phrase d accroche avec le titre et le lien', (
 });
 
 test('adIntroText utilise le gabarit de la langue choisie (titre et lien)', () => {
-  for (const lang of ['fr', 'ar', 'ff', 'sar']) {
+  for (const lang of ['fr', 'ar', 'ff']) {
     const template = t(lang, 'ad_intro_message');
     const message = adIntroText({ title: 'Vache', url: 'https://bodogui.com/ad/1' }, template);
     assert.ok(!message.includes('{title}'), `${lang} : le titre doit etre insere`);

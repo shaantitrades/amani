@@ -12,37 +12,31 @@ export const SMS_TEMPLATES = {
     fr: ({ code, app }) => `${app}: votre code est ${code}. Valable ${'{{ttl}}'} minutes. Ne le partagez avec personne.`,
     ar: ({ code, app }) => `${app}: code ${code}. Valide {{ttl}} min. Ne le donnez a personne.`,
     ff: ({ code, app }) => `${app}: kod maa ko woni ${code}. Nde himo {{ttl}} minu. Wata a yeewtu nde.`,
-    sar: ({ code, app }) => `${app}: code man ${code}. Ku {{ttl}} min. Ma daa koy.`,
   },
   ad_published: {
     fr: ({ app }) => `${app}: votre annonce est publiee. Vous recevrez un SMS si quelqu'un est interesse.`,
     ar: ({ app }) => `${app}: annonce bi publiye. SMS so woni interested.`,
     ff: ({ app }) => `${app}: njoftal maa yaltii. SMS wartoto so neɗɗo yiɗi.`,
-    sar: ({ app }) => `${app}: annonce ma te. SMS ba no mba.`,
   },
   ad_interest: {
     fr: ({ app, category }) => `${app}: quelqu'un est interesse par votre annonce "${category}". Ouvrez l'application pour voir.`,
     ar: ({ app, category }) => `${app}: neɗɗo yiɗi annonce maa "${category}". Uddu app ngam yiyde.`,
     ff: ({ app, category }) => `${app}: neɗɗo yiɗi annonce maa "${category}". Uddit app ngam yiyde.`,
-    sar: ({ app, category }) => `${app}: mba te annonce "${category}". Open app ne mba.`,
   },
   group_post: {
     fr: ({ app, group }) => `${app}: nouvelle annonce dans le groupe "${group}". Ouvrez l'application.`,
     ar: ({ app, group }) => `${app}: annonce keso e groupe "${group}". Uddit app.`,
     ff: ({ app, group }) => `${app}: annonce keso to groupe "${group}". Uddit app.`,
-    sar: ({ app, group }) => `${app}: annonce nggo e groupe "${group}". Open app.`,
   },
   ban: {
     fr: ({ app }) => `${app}: votre compte a ete suspendu. Contactez le support.`,
     ar: ({ app }) => `${app}: compte maa nde sudu. Yewtu support.`,
     ff: ({ app }) => `${app}: compte maa uddaama. Yewtu support.`,
-    sar: ({ app }) => `${app}: compte man kpe. Yeu support.`,
   },
   safety: {
     fr: ({ app }) => `${app}: ne payez jamais avant d'avoir vu le produit. Rencontrez-vous dans un lieu public.`,
     ar: ({ app }) => `${app}: wata a yoɓu ado yiide produkt. Haɓde e nokku yimɓe.`,
     ff: ({ app }) => `${app}: wata a njoɓu ado yiide ko soodataa. Keddondiree e nokku yimɓe.`,
-    sar: ({ app }) => `${app}: ma pey nan mba produit. Kpe ge nok public.`,
   },
 };
 

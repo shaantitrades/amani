@@ -1,24 +1,24 @@
 import fr from './strings/fr.js';
 import ar from './strings/ar.js';
 import ff from './strings/ff.js';
-import sar from './strings/sar.js';
 import { VOICE_PROMPT_TEXT, VOICE_PROMPT_KEYS } from './strings/voice.js';
 
 /**
  * Internationalisation Bodogui.
  * Toute cle absente d'une langue retombe sur le francais : jamais de texte vide.
+ * Trois langues pilotes : francais, arabe tchadien, fulfulde. Le sara a ete
+ * retire du produit (libelles et messages vocaux non valides par des natifs).
  */
 
 export const LANGUAGES = [
   { code: 'fr', label: 'Francais', native: 'Français', flag: '🇫🇷', dir: 'ltr', tts: 'fr-FR' },
   { code: 'ar', label: 'Arabe tchadien', native: 'عربي', flag: '🇹🇩', dir: 'rtl', tts: 'ar-SA' },
   { code: 'ff', label: 'Fulfulde', native: 'Fulfulde', flag: '🇹🇩', dir: 'ltr', tts: 'fr-FR' },
-  { code: 'sar', label: 'Sara', native: 'Sara', flag: '🇹🇩', dir: 'ltr', tts: 'fr-FR' },
 ];
 
 export const DEFAULT_LANGUAGE = 'fr';
 
-const TABLES = { fr, ar, ff, sar };
+const TABLES = { fr, ar, ff };
 
 export function t(lang, key) {
   const table = TABLES[lang] || TABLES.fr;
