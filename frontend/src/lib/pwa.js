@@ -13,12 +13,36 @@ export const INSTALL_KEY = 'bodogui.install';
 export const INSTALL_COOLDOWN_DAYS = 3;
 
 /**
- * Installation obligatoire : sur le site, Bodogui s'installe et l'application
- * remplace le navigateur (plus de barre d'adresse, ouverture par l'icone,
- * notifications). Peut etre desactivee pour le developpement avec
- * `VITE_INSTALL_GATE=off` (fichier `.env` du frontend).
+ * Installation de l'application : trois modes, choisis par `VITE_INSTALL_GATE`
+ * (fichier `.env` du frontend, valeur figee au moment du build).
+ *
+ *  - `off` : aucun portail ; l'invitation discrete (`InstallPrompt`, refus
+ *    repousse de 3 jours) reste affichee ;
+ *  - *(defaut)* `invite` : portail d'invitation plein ecran, **jamais
+ *    obligatoire** — le bouton INSTALLER est mis en avant et « Continuer dans le
+ *    navigateur » est toujours disponible : personne ne doit installer Bodogui
+ *    pour utiliser le site ;
+ *  - `mandatory` : portail bloquant (demonstration, essai terrain) ou seule
+ *    l'installation ouvre l'application.
+ *
+ * @param {string|undefined} raw valeur brute de `VITE_INSTALL_GATE`
+ * @returns {'off'|'invite'|'mandatory'}
  */
-export const INSTALL_GATE_ENABLED = import.meta.env?.VITE_INSTALL_GATE !== 'off';
+export function installGateMode(raw) {
+  const value = String(raw ?? '').trim().toLowerCase();
+  if (['off', '0', 'false', 'no', 'none'].includes(value)) return 'off';
+  if (['mandatory', 'required', 'on', '1', 'true', 'yes'].includes(value)) return 'mandatory';
+  return 'invite';
+}
+
+/** Mode actif du portail d'installation (`invite` par defaut). */
+export const INSTALL_GATE_MODE = installGateMode(import.meta.env?.VITE_INSTALL_GATE);
+
+/** Le portail est-il monte ? (non en mode `off`). */
+export const INSTALL_GATE_ENABLED = INSTALL_GATE_MODE !== 'off';
+
+/** L'installation est-elle imposee ? (mode `mandatory` uniquement). */
+export const INSTALL_GATE_MANDATORY = INSTALL_GATE_MODE === 'mandatory';
 
 /** Delai laisse au navigateur pour emettre `beforeinstallprompt`. */
 export const INSTALL_GATE_GRACE_MS = 2500;
@@ -110,18 +134,20 @@ export function markInstalled(storage = defaultStorage()) {
 }
 
 /**
- * Faut-il **bloquer** l'acces a l'application tant qu'elle n'est pas installee ?
+ * Faut-il afficher le portail d'installation, et le visiteur peut-il le quitter ?
  *
  * Regles :
  *  - l'application deja installee (mode autonome ou `appinstalled`) n'est jamais bloquee ;
- *  - si le navigateur sait installer (`beforeinstallprompt`), le blocage est total :
- *    seule l'installation ouvre l'application ;
- *  - sur iPhone (installation manuelle) et sur les navigateurs sans installation
- *    (Firefox, HTTP non securise), une porte de sortie apparait apres le delai
- *    d'attente — sinon ces visiteurs ne pourraient jamais utiliser le site.
+ *  - en mode `invite` (defaut), le portail **n'oblige a rien** : `canEscape` est
+ *    toujours vrai, « Continuer dans le navigateur » reste donc propose ;
+ *  - en mode `mandatory`, si le navigateur sait installer (`beforeinstallprompt`)
+ *    le blocage est total : seule l'installation ouvre l'application ; sur iPhone
+ *    (installation manuelle) et sur les navigateurs sans installation (Firefox,
+ *    HTTP non securise), une porte de sortie apparait apres le delai d'attente —
+ *    sinon ces visiteurs seraient definitivement bloques.
  *
  * @param {object} input
- * @param {boolean} [input.enabled] installation obligatoire activee
+ * @param {'off'|'invite'|'mandatory'} [input.mode] mode du portail
  * @param {boolean} [input.standalone] l'app tourne en mode installe
  * @param {boolean} [input.installed] installation detectee lors d'une visite precedente
  * @param {boolean} [input.bypassed] le visiteur a choisi de continuer dans le navigateur
@@ -132,7 +158,7 @@ export function markInstalled(storage = defaultStorage()) {
  * @returns {{block: boolean, canEscape: boolean, reason: string}}
  */
 export function shouldShowInstallGate({
-  enabled = INSTALL_GATE_ENABLED,
+  mode = INSTALL_GATE_MODE,
   standalone = false,
   installed = false,
   bypassed = false,
@@ -141,17 +167,21 @@ export function shouldShowInstallGate({
   settled = false,
   promptUsed = false,
 } = {}) {
-  if (!enabled) return { block: false, canEscape: false, reason: 'disabled' };
+  if (mode === 'off') return { block: false, canEscape: false, reason: 'disabled' };
   if (standalone) return { block: false, canEscape: false, reason: 'already_standalone' };
   if (installed) return { block: false, canEscape: false, reason: 'already_installed' };
   if (bypassed) return { block: false, canEscape: false, reason: 'bypassed' };
-  if (canPrompt) return { block: true, canEscape: false, reason: 'prompt_available' };
-  if (ios) return { block: true, canEscape: settled, reason: 'ios_manual_install' };
+  // Installation imposee uniquement en mode `mandatory` : partout ailleurs, la
+  // porte de sortie est ouverte des le premier ecran.
+  const mandatory = mode === 'mandatory';
+  const escape = (afterDelay) => !mandatory || afterDelay;
+  if (canPrompt) return { block: true, canEscape: escape(false), reason: 'prompt_available' };
+  if (ios) return { block: true, canEscape: escape(settled), reason: 'ios_manual_install' };
   // Navigateur sans boite de dialogue disponible : porte de sortie apres l'attente.
-  // Si le declencheur a deja ete consomme (installation refusee), on reste bloque :
-  // recharger la page repropose l'installation.
-  if (promptUsed) return { block: true, canEscape: false, reason: 'prompt_refused' };
-  return { block: true, canEscape: settled, reason: settled ? 'unsupported' : 'waiting_prompt' };
+  // En mode `mandatory`, si le declencheur a deja ete consomme (installation
+  // refusee), on reste bloque : recharger la page repropose l'installation.
+  if (promptUsed) return { block: true, canEscape: escape(false), reason: 'prompt_refused' };
+  return { block: true, canEscape: escape(settled), reason: settled ? 'unsupported' : 'waiting_prompt' };
 }
 
 /** L'utilisateur choisit "Plus tard" : on ne reaffiche pas avant le delai. */
@@ -167,8 +197,11 @@ export function markGateBypassed(storage = defaultStorage()) {
 export default {
   INSTALL_KEY,
   INSTALL_COOLDOWN_DAYS,
+  INSTALL_GATE_MODE,
   INSTALL_GATE_ENABLED,
+  INSTALL_GATE_MANDATORY,
   INSTALL_GATE_GRACE_MS,
+  installGateMode,
   isStandalone,
   isIos,
   readInstallState,

@@ -5,6 +5,8 @@ import { BigButton } from './ui.jsx';
 import {
   INSTALL_GATE_ENABLED,
   INSTALL_GATE_GRACE_MS,
+  INSTALL_GATE_MANDATORY,
+  INSTALL_GATE_MODE,
   isIos,
   isStandalone,
   markGateBypassed,
@@ -14,19 +16,18 @@ import {
 } from '../lib/pwa.js';
 
 /**
- * Portail d'installation : tant que Bodogui n'est pas installe, l'application
- * n'est **pas montee du tout** (aucun ecran qui apparait puis disparait, aucun
- * appel reseau inutile en 2G). L'installation est obligatoire : c'est elle qui
- * donne l'icone sur l'ecran d'accueil, l'ouverture en un geste et les
- * notifications.
+ * Invitation a installer Bodogui (PWA). Le portail s'affiche plein ecran pour
+ * mettre l'installation en avant : icone sur l'ecran d'accueil, ouverture en un
+ * geste, notifications.
  *
- * Trois cas :
- *  - Android/Chrome (et navigateurs de bureau recents) : bouton INSTALLER qui
- *    ouvre la boite de dialogue native ;
- *  - iPhone : instructions manuelles (Partager > Sur l ecran d'accueil) ;
- *  - navigateur sans installation (Firefox, HTTP non securise) : apres quelques
- *    secondes, un lien discret permet de continuer dans le navigateur — sans
- *    lui, ces visiteurs seraient definitivement bloques.
+ * L'installation n'est **pas obligatoire** : « Continuer dans le navigateur »
+ * est toujours propose, et le refus est memorise (`bypassed`). Trois modes via
+ * `VITE_INSTALL_GATE` :
+ *  - `off` : aucun portail (l'invitation discrete `InstallPrompt` reprend) ;
+ *  - *(defaut)* `invite` : portail non bloquant ;
+ *  - `mandatory` : portail bloquant (demonstration, essai terrain) — sur iPhone
+ *    et sur les navigateurs sans installation, une porte de sortie apparait
+ *    apres quelques secondes, sans quoi ces visiteurs seraient bloques.
  */
 export function InstallGate({ children }) {
   const { language, showToast } = useApp();
@@ -69,7 +70,7 @@ export function InstallGate({ children }) {
   }, [language, showToast]);
 
   const decision = shouldShowInstallGate({
-    enabled: INSTALL_GATE_ENABLED,
+    mode: INSTALL_GATE_MODE,
     standalone,
     installed: Boolean(state.installed),
     bypassed: Boolean(state.bypassed),
@@ -93,8 +94,9 @@ export function InstallGate({ children }) {
       // Le navigateur a refuse d'ouvrir la boite de dialogue : on garde le portail.
     } finally {
       // Le declencheur n'est utilisable qu'une fois : on bascule sur le message
-      // d'installation. L'installation restant obligatoire, aucune porte de
-      // sortie n'est proposee ici (recharger la page la repropose).
+      // d'installation (instructions iPhone, ou rechargement de la page pour
+      // reproposer la boite de dialogue). En mode invitation, « Continuer dans le
+      // navigateur » reste affiche ; il ne disparait qu'en mode mandatory.
       setDeferred(null);
       setPromptUsed(true);
       setSettled(true);
@@ -118,7 +120,7 @@ export function InstallGate({ children }) {
         <div className="install-card install-card--gate">
           <div className="install-card__logo" aria-hidden="true">B</div>
           <h2 className="install-card__title">{t(language, 'install_title')}</h2>
-          <p className="install-card__message">{t(language, 'install_required_message')}</p>
+          <p className="install-card__message">{t(language, 'install_invite_message')}</p>
 
           {deferred ? (
             <BigButton
@@ -135,9 +137,22 @@ export function InstallGate({ children }) {
           )}
 
           {decision.canEscape ? (
-            <button type="button" className="install-card__escape" onClick={bypass}>
-              {t(language, 'install_open_browser')}
-            </button>
+            INSTALL_GATE_MANDATORY ? (
+              // Mode demonstration : porte de sortie discrete (iPhone / navigateur
+              // sans installation), sans quoi ces visiteurs seraient bloques.
+              <button type="button" className="install-card__escape" onClick={bypass}>
+                {t(language, 'install_open_browser')}
+              </button>
+            ) : (
+              // Mode invitation (defaut) : l'installation n'est pas obligatoire, la
+              // sortie est donc un vrai bouton, aussi visible que INSTALLER.
+              <BigButton
+                icon="🌐"
+                label={t(language, 'install_open_browser')}
+                color="grey"
+                onClick={bypass}
+              />
+            )
           ) : null}
         </div>
       </div>

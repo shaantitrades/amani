@@ -327,7 +327,7 @@ Le frontend ne lit que des variables `VITE_*` exposees au moment du build (fichi
 | --- | --- | --- |
 | `VITE_API_URL` | `/api/v1` | Chemin de l'API (proxy Nginx en production) |
 | `VITE_API_PROXY` | `http://127.0.0.1:4000` | Cible du proxy Vite en developpement |
-| `VITE_INSTALL_GATE` | *(active)* | `off` desactive le portail d'installation obligatoire (reserve au developpement) |
+| `VITE_INSTALL_GATE` | `invite` | Portail d'invitation a installer la PWA : `invite` (defaut) le propose sans l'imposer (« Continuer dans le navigateur » toujours disponible), `mandatory` le rend bloquant (demonstration), `off` le desactive (l'invitation discrete `InstallPrompt` reprend, valeur figee au build) |
 
 ## Securite
 

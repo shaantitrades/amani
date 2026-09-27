@@ -126,16 +126,16 @@ vocal, fil d'annonces, recherche filtree, contact direct, **blocage/deblocage**,
   des appels lances (IndexedDB : rien n'est envoye au serveur, boutons 📞 et 💬, appel par
   `tel:`). L'onglet **Notifications** affiche le journal des alertes SMS / push / vocales
   (`GET /me/notifications`), consultable hors ligne et remis a zero a l'ouverture.
-- **Installation de la PWA obligatoire** : a la premiere visite, l'application n'est pas ouverte
-  tant que Bodogui n'est pas installe. Un **portail plein ecran** remplace tout le site (aucun
-  ecran n'apparait puis disparait, aucune requete inutile en 2G) : bouton INSTALLER sur
-  Android/Chrome, instructions « Partager > Sur l ecran d'accueil » sur iPhone. Une application
-  deja installee (mode autonome, `appinstalled`) entre directement ; sur un navigateur qui ne
-  peut pas installer (Firefox, site en HTTP non securise), un lien discret « Ouvrir dans le
-  navigateur » apparait apres quelques secondes, sinon ces visiteurs seraient bloques
-  definitivement (`frontend/src/components/InstallGate.jsx`, regles dans `frontend/src/lib/pwa.js`).
-  Le portail se desactive pour le developpement avec `VITE_INSTALL_GATE=off` ; dans ce cas
-  l'invitation classique (non bloquante, refus repousse de 3 jours) reprend le relais.
+- **Invitation a installer la PWA (jamais obligatoire)** : a la premiere visite, un **portail
+  plein ecran** propose l'installation — bouton INSTALLER sur Android/Chrome, instructions
+  « Partager > Sur l ecran d'accueil » sur iPhone — mais le visiteur peut **toujours continuer
+  dans le navigateur** (« Continuer dans le navigateur ») ; le refus est memorise et le portail
+  ne revient plus. Une application deja installee (mode autonome, `appinstalled`) entre
+  directement (`frontend/src/components/InstallGate.jsx`, regles dans `frontend/src/lib/pwa.js`).
+  Trois modes via `VITE_INSTALL_GATE` : *(defaut)* `invite` (portail non bloquant), `mandatory`
+  (portail bloquant, pour une demonstration ou un essai terrain) et `off` (aucun portail :
+  l'invitation discrete `InstallPrompt`, refus repousse de 3 jours, reprend le relais). La valeur
+  est figee au build du frontend : un changement demande un redeploiement.
 - **Partage d'annonce** : bouton PARTAGER (WhatsApp, menu de partage du telephone, copie du
   lien). Le texte partage ne contient **que le lien** (jamais le numero du vendeur). Une
   annonce partagee **exige une inscription**, et sans compte il est impossible d'ecrire au

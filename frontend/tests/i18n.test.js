@@ -147,11 +147,12 @@ test('le changement de langue est confirme et traduit dans les 3 langues', () =>
   }
 });
 
-test('l\'installation obligatoire est expliquee dans les 3 langues', () => {
-  // Le portail d'installation remplace toute l'application : un visiteur qui ne
-  // comprend ni le francais ni l'anglais doit savoir quoi faire.
+test('l\'invitation a installer est expliquee dans les 3 langues', () => {
+  // Le portail d'invitation occupe tout l'ecran : un visiteur qui ne comprend ni
+  // le francais ni l'anglais doit savoir installer l'application — et qu'il peut
+  // aussi continuer sans installer.
   const codes = LANGUAGES.map((l) => l.code);
-  for (const key of ['install_required_message', 'install_open_browser']) {
+  for (const key of ['install_invite_message', 'install_open_browser']) {
     assert.ok(t('fr', key) && t('fr', key) !== key, `fr.${key} manquant`);
     for (const lang of codes.filter((code) => code !== 'fr')) {
       const value = t(lang, key);
