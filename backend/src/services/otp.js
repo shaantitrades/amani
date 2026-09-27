@@ -71,7 +71,9 @@ export async function requestOtp({ phone, ip, language = 'fr', purpose = 'login'
     const minutes = Math.max(1, Math.round(ttl / 60));
     const body = renderTemplate('otp', language, { code }).replace('{{ttl}}', String(minutes));
     try {
-      sms = await sendSms({ to: phone, body });
+      // `code` n'est utilise que par WhatsApp (modele valide) : les autres
+      // passerelles envoient `body`.
+      sms = await sendSms({ to: phone, body, code });
     } catch (err) {
       logger.error({ err: err.message, phone }, "Echec d'envoi du SMS OTP");
       // En production, on ne bloque pas la reponse : l'utilisateur peut redemander.

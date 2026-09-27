@@ -6,7 +6,10 @@ coverage/
 
 .env
 .env.*
+# Malgre le nom, ces deux fichiers ne contiennent AUCUN secret (valeurs vides) :
+# ils doivent rester dans le depot, sinon un clone neuf n'a aucun modele a suivre.
 !.env.example
+!.env.production.example
 
 # runtime data
 var/

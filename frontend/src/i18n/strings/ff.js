@@ -11,7 +11,7 @@ export default {
   my_ads: 'Njoftale am',
   phone_prompt: 'Naatnu numero telefoŋ maa',
   send_code: 'Neldu kod man',
-  code_prompt: 'Naatnu kod neldaaɗo',
+  code_prompt: 'Naatnu kod neldaaɗo (SMS walla WhatsApp)',
   verify: 'Teeŋtin',
   resend: 'Neldu kod kaden',
   login_to_chat: 'Sos compte maa ngam haalde e joom njoftal.',

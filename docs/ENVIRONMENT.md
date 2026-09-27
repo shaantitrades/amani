@@ -73,7 +73,8 @@ l'anomalie tout en laissant le conteneur vivant, ce qui permet de lire la cause 
 
 | Variable | Description |
 | --- | --- |
-| `SMS_PROVIDER` | `console` (dev), `africastalking`, `twilio`, `http` |
+| `SMS_PROVIDER` | `console` (dev), `whatsapp`, `http`, `africastalking`, `twilio` |
+| `SMS_FALLBACK_PROVIDER` | Canal de secours essayé si le principal échoue (`none` par défaut) |
 | `SMS_SENDER_ID` | Expediteur affiche (ex : `BODOGUI`) |
 | `AFRICASTALKING_USERNAME` / `AFRICASTALKING_API_KEY` | Identifiants Africa's Talking |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | Identifiants Twilio |
@@ -81,11 +82,18 @@ l'anomalie tout en laissant le conteneur vivant, ce qui permet de lire la cause 
 | `SMS_HTTP_METHOD` | `POST` (defaut) ou `GET` |
 | `SMS_HTTP_HEADERS` | Objet JSON d'en-tetes (ex : `{"Authorization":"App xxx"}`) |
 | `SMS_HTTP_BODY` | Modele du corps / de la requete (voir plus bas) |
+| `WHATSAPP_TOKEN` | Jeton d'accès Meta envoyé en `Bearer` |
+| `WHATSAPP_PHONE_ID` | « Phone number ID » du numéro expéditeur (console Meta) |
+| `WHATSAPP_TEMPLATE` | Nom du modèle validé (obligatoire hors fenêtre de 24 h) |
+| `WHATSAPP_TEMPLATE_LANG` | Langue du modèle (`fr` par défaut) |
+| `WHATSAPP_API_VERSION` | Version de la Graph API (`v21.0` par défaut) |
 
 En mode `console`, les SMS sont ecrits dans les logs (aucun cout). Au demarrage,
-l'API **avertit dans les logs** quand une passerelle est choisie mais incomplete
-(`SMS_PROVIDER=africastalking` sans cles, `SMS_PROVIDER=http` sans URL...) : c'est
-la cause n°1 des « code incorrect » alors que le code a bien ete cree en base.
+l'API **avertit dans les logs** quand un canal est choisi mais incomplet
+(`SMS_PROVIDER=africastalking` sans cles, `SMS_PROVIDER=http` sans URL,
+`SMS_PROVIDER=whatsapp` sans `WHATSAPP_TOKEN`/`WHATSAPP_PHONE_ID`, WhatsApp sans
+`WHATSAPP_TEMPLATE`, secours inutilisable...) : c'est la cause n°1 des « code
+incorrect » alors que le code a bien ete cree en base.
 
 ### Brancher un vrai fournisseur SMS
 
@@ -144,11 +152,83 @@ d'environnement (redemarrage du service `api`, pas de redeploiement).
    un code. L'identifiant de message renvoyé (`message_id`, `messageId`, `sid`,
    `id`) est conservé dans les logs.
 
-### Cout des SMS
+### Envoyer les codes par WhatsApp (Meta Cloud API)
+
+WhatsApp est le canal le moins cher pour un code : un message envoyé dans les
+**24 h** qui suivent un message de l'utilisateur est **gratuit** (fenêtre de
+service), et c'est le service de messagerie le plus utilisé au Tchad. Rien à
+coder pour le brancher :
+
+```bash
+SMS_PROVIDER=whatsapp
+WHATSAPP_TOKEN=EAAG...                  # jeton d'acces (utilisateur systeme = permanent)
+WHATSAPP_PHONE_ID=123456789012345       # « Phone number ID », PAS le numero affiche
+WHATSAPP_TEMPLATE=code_bodogui          # modele valide (voir ci-dessous)
+WHATSAPP_TEMPLATE_LANG=fr
+SMS_FALLBACK_PROVIDER=http              # SMS de secours si le numero n'a pas WhatsApp
+```
+
+**Mise en place (une seule fois)**
+
+1. Créer un **compte Business** sur
+   [business.facebook.com](https://business.facebook.com), puis une application
+   de type *Business* sur
+   [developers.facebook.com](https://developers.facebook.com).
+2. Ajouter le produit **WhatsApp** : Meta fournit un **numéro de test** (jusqu'à
+   5 destinataires autorisés, messages illimités) — parfait pour la recette, sans
+   vérification d'entreprise.
+3. *API Setup* : relever le `Phone number ID` → `WHATSAPP_PHONE_ID`, puis
+   *Generate token* → `WHATSAPP_TOKEN`. Ce jeton expire en 24 h : pour la
+   production, créer un **utilisateur système** dans *Business settings* et
+   générer un **jeton permanent** avec la permission `whatsapp_business_messaging`.
+4. Passer en production exige un **compte Business vérifié** (registre de
+   commerce, site web, e-mail professionnel) puis un **nom d'affichage** validé
+   pour le numéro.
+5. Créer le **modèle** (WhatsApp Manager > *Message templates*), catégorie
+   *Authentification* ou *Utilitaire*, avec **un seul paramètre** dans le corps :
+
+   ```text
+   {{1}} est votre code de connexion Bodogui. Ne le partagez avec personne.
+   ```
+
+   Le **code** est envoyé dans `{{1}}` : les textes `SMS_TEMPLATES` (fr/ar/ff) ne
+   servent donc pas dans ce mode. Meta doit approuver le modèle (de quelques
+   minutes à quelques heures).
+
+**Texte libre ou modèle ?**
+
+| Situation | Envoi | Remarque |
+| --- | --- | --- |
+| L'utilisateur a écrit au numéro il y a moins de 24 h (ou numéro de test Meta) | **texte libre** | gratuit |
+| Nouvel utilisateur, ou plus de 24 h après son dernier message | **modèle obligatoire** (`WHATSAPP_TEMPLATE`) | Meta refuse le texte libre : erreur `131047` |
+
+Si `WHATSAPP_TEMPLATE` est vide, l'envoi retombe automatiquement sur le texte
+libre — et l'API **avertit au démarrage** (`SMS_PROVIDER=whatsapp` sans
+modèle) : dans ce cas, seuls les numéros ayant écrit récemment recevraient leur
+code.
+
+**Secours (`SMS_FALLBACK_PROVIDER`)** — recommandé : si le canal principal
+échoue (numéro sans WhatsApp, jeton expiré, quota, hors fenêtre 24 h sans
+modèle), l'envoi est **retenté une seule fois** sur le canal de secours, et
+l'échec est journalisé. Avec `SMS_FALLBACK_PROVIDER=http` + `SMS_HTTP_*`, une
+personne qui n'a pas WhatsApp reçoit son code par SMS : la connexion n'est donc
+jamais impossible. Les alertes automatiques (annonce publiée, message reçu :
+`backend/src/services/notifications.js`) sont toujours hors fenêtre de 24 h et
+partent donc par le canal de secours.
+
+> Les échanges entre acheteurs et vendeurs restent **dans Bodogui** : WhatsApp
+> sert uniquement à remettre le code de connexion et les alertes, jamais à
+> ouvrir une discussion externe.
+
+### Cout des messages
 
 - **Gratuit** : `SMS_PROVIDER=console` (le code s'affiche dans les logs du service
   `api`) et la connexion de test `TEST_LOGIN_PHONES` + `TEST_LOGIN_CODE`. Aucun
-  SMS, aucun coût : idéal pour la recette, la formation et les démonstrations.
+  message, aucun coût : idéal pour la recette, la formation et les démonstrations.
+- **WhatsApp** : gratuit dans la fenêtre de service de 24 h (utilisateur qui vient
+  d'écrire) et avec le numéro de test Meta ; hors fenêtre, un modèle
+  d'authentification est facturé quelques centimes par message (grille Meta par
+  pays, nettement moins cher qu'un SMS vers le Tchad).
 - **Premiers vrais SMS** : la plupart des agrégateurs offrent un crédit d'essai ou
   un environnement de test à l'inscription (Africa's Talking, Termii, Infobip,
   Twilio). Comptez ensuite de l'ordre de 15 à 50 FCFA par SMS vers le Tchad selon

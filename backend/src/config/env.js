@@ -46,7 +46,13 @@ const schema = z.object({
   TEST_LOGIN_PHONES: z.string().default(''),
   TEST_LOGIN_CODE: z.string().default(''),
 
-  SMS_PROVIDER: z.enum(['console', 'africastalking', 'twilio', 'http']).default('console'),
+  // Canal d'envoi des codes de connexion et des alertes :
+  // console (aucun envoi, code dans les logs) | whatsapp (Meta Cloud API) |
+  // http (passerelle generique) | africastalking | twilio.
+  SMS_PROVIDER: z.enum(['console', 'africastalking', 'twilio', 'http', 'whatsapp']).default('console'),
+  // Canal de secours, essaye quand le canal principal echoue (numero sans
+  // WhatsApp, passerelle en panne, modele refuse...). `none` = aucun secours.
+  SMS_FALLBACK_PROVIDER: z.enum(['none', 'console', 'africastalking', 'twilio', 'http', 'whatsapp']).default('none'),
   SMS_SENDER_ID: z.string().default('BODOGUI'),
   AFRICASTALKING_USERNAME: z.string().optional().default(''),
   AFRICASTALKING_API_KEY: z.string().optional().default(''),
@@ -62,6 +68,17 @@ const schema = z.object({
   SMS_HTTP_METHOD: z.enum(['POST', 'GET']).default('POST'),
   SMS_HTTP_HEADERS: z.string().optional().default(''),
   SMS_HTTP_BODY: z.string().optional().default(''),
+  // WhatsApp (Meta Cloud API) : canal le moins cher pour un code, car un message
+  // envoye dans les 24 h qui suivent un message de l'utilisateur est gratuit.
+  // WHATSAPP_PHONE_ID = « Phone number ID » (console Meta > WhatsApp > API Setup).
+  // WHATSAPP_TEMPLATE = nom d'un modele valide : OBLIGATOIRE pour un nouvel
+  // utilisateur (hors fenetre de 24 h), le code partant en 1er parametre du corps.
+  // Voir docs/ENVIRONMENT.md, « Envoyer les codes par WhatsApp ».
+  WHATSAPP_TOKEN: z.string().optional().default(''),
+  WHATSAPP_PHONE_ID: z.string().optional().default(''),
+  WHATSAPP_TEMPLATE: z.string().optional().default(''),
+  WHATSAPP_TEMPLATE_LANG: z.string().default('fr'),
+  WHATSAPP_API_VERSION: z.string().default('v21.0'),
 
   STORAGE_DRIVER: z.enum(['local', 'minio', 'b2']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./var/storage'),
@@ -162,21 +179,46 @@ if (raw.TEST_LOGIN_CODE && !testLoginCode) {
  * l'API doivent rester utilisables.
  * @param {Record<string, string>} source variables brutes
  */
-function warnIfSmsIncomplete(source) {
-  const required =
-    source.SMS_PROVIDER === 'africastalking'
-      ? ['AFRICASTALKING_USERNAME', 'AFRICASTALKING_API_KEY']
-      : source.SMS_PROVIDER === 'twilio'
-        ? ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM']
-        : source.SMS_PROVIDER === 'http'
-          ? ['SMS_HTTP_URL']
-          : [];
-  const missing = required.filter((key) => !source[key]);
-  if (!missing.length) return;
+function warn(message) {
   // eslint-disable-next-line no-console
-  console.warn(
-    `[bodogui] SMS_PROVIDER=${source.SMS_PROVIDER} mais ${missing.join(', ')} vide(s) : AUCUN SMS ne sera envoye. Voir docs/ENVIRONMENT.md (Brancher un vrai fournisseur SMS).`,
-  );
+  console.warn(`[bodogui] ${message}`);
+}
+
+/** Variables indispensables a chaque canal (pour l'avertissement de demarrage). */
+const SMS_REQUIRED_VARS = {
+  console: [],
+  none: [],
+  africastalking: ['AFRICASTALKING_USERNAME', 'AFRICASTALKING_API_KEY'],
+  twilio: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM'],
+  http: ['SMS_HTTP_URL'],
+  whatsapp: ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'],
+};
+
+function warnIfSmsIncomplete(source) {
+  const missing = (SMS_REQUIRED_VARS[source.SMS_PROVIDER] || []).filter((key) => !source[key]);
+  if (missing.length) {
+    warn(
+      `SMS_PROVIDER=${source.SMS_PROVIDER} mais ${missing.join(', ')} vide(s) : AUCUN message ne sera envoye. Voir docs/ENVIRONMENT.md (Brancher un vrai fournisseur SMS).`,
+    );
+  }
+  // WhatsApp n'accepte un texte libre que dans les 24 h qui suivent un message de
+  // l'utilisateur : sans modele valide, un nouvel inscrit ne recevrait rien.
+  const whatsappActive = source.SMS_PROVIDER === 'whatsapp' || source.SMS_FALLBACK_PROVIDER === 'whatsapp';
+  if (whatsappActive && !source.WHATSAPP_TEMPLATE) {
+    warn(
+      "WhatsApp sans WHATSAPP_TEMPLATE : seul un texte libre est possible, accepte uniquement dans les 24 h suivant un message de l'utilisateur. Definir un modele valide (docs/ENVIRONMENT.md, « Envoyer les codes par WhatsApp »).",
+    );
+  }
+  const fallback = source.SMS_FALLBACK_PROVIDER;
+  if (!fallback || fallback === 'none') return;
+  if (fallback === source.SMS_PROVIDER) {
+    warn(`SMS_FALLBACK_PROVIDER=${fallback} est identique a SMS_PROVIDER : le secours ne sert a rien.`);
+    return;
+  }
+  const fallbackMissing = (SMS_REQUIRED_VARS[fallback] || []).filter((key) => !source[key]);
+  if (fallbackMissing.length) {
+    warn(`SMS_FALLBACK_PROVIDER=${fallback} mais ${fallbackMissing.join(', ')} vide(s) : le secours ne fonctionnera pas.`);
+  }
 }
 
 warnIfSmsIncomplete(raw);

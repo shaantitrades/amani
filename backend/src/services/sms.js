@@ -52,6 +52,11 @@ function toGatewayNumber(e164) {
   return String(e164 || '').replace(/[^\d+]/g, '');
 }
 
+/** Numero au format attendu par l'API WhatsApp : chiffres seuls (`23566000000`). */
+export function whatsappNumber(e164) {
+  return String(e164 || '').replace(/\D/g, '');
+}
+
 async function sendViaConsole({ to, body }) {
   logger.info({ to, body, provider: 'console' }, 'SMS (mode console - non envoye)');
   return { ok: true, provider: 'console', providerId: `console-${Date.now()}`, simulated: true };
@@ -171,10 +176,38 @@ export function extractProviderId(text) {
   try {
     const data = JSON.parse(text);
     return (
-      data?.message_id || data?.messageId || data?.sid || data?.id || data?.data?.id || data?.data?.message_id || undefined
+      data?.message_id ||
+      data?.messageId ||
+      data?.sid ||
+      data?.id ||
+      data?.data?.id ||
+      data?.data?.message_id ||
+      // WhatsApp (Meta Cloud API) : {"messages":[{"id":"wamid.xxxx"}]}
+      data?.messages?.[0]?.id ||
+      undefined
     );
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Message d'erreur lisible renvoye par Meta : `{"error":{"message":"...","code":131047}}`.
+ * Le code 131047 signifie « hors fenetre de 24 h » : sans modele valide, Meta
+ * refuse d'envoyer un texte libre a un nouvel utilisateur.
+ * Fonction pure, testable sans reseau.
+ * @param {string} text
+ * @returns {string}
+ */
+export function whatsappErrorMessage(text) {
+  try {
+    const error = JSON.parse(text)?.error;
+    if (!error) return String(text || '').slice(0, 200);
+    return [error.message, error.code ? `(code ${error.code})` : '', error.error_data?.details]
+      .filter(Boolean)
+      .join(' ');
+  } catch {
+    return String(text || '').slice(0, 200);
   }
 }
 
@@ -210,20 +243,99 @@ async function sendViaHttp({ to, body }) {
 }
 
 /**
- * Envoie un SMS via la passerelle configuree.
- * @returns {Promise<{ok: boolean, provider: string, providerId?: string, simulated?: boolean}>}
+ * Envoi par WhatsApp (Meta Cloud API) : le canal le moins cher pour un code, car
+ * la reponse a un message de l'utilisateur est gratuite pendant 24 h.
+ *
+ * Deux modes :
+ *  - `WHATSAPP_TEMPLATE` renseigne et code disponible : modele valide par Meta,
+ *    le CODE partant en premier parametre du corps. C'est le SEUL mode accepte
+ *    hors fenetre de 24 h (donc pour un nouvel inscrit) ;
+ *  - sinon : texte libre, accepte dans la fenetre de 24 h (ou par un numero de
+ *    test autorise dans la console Meta). Meta repond alors 131047.
+ *
+ * Voir docs/ENVIRONMENT.md, « Envoyer les codes par WhatsApp ».
+ * @param {{to: string, body: string, code?: string}} payload
  */
-export async function sendSms({ to, body }) {
-  const payload = { to, body };
-  switch (env.SMS_PROVIDER) {
-    case 'africastalking':
-      return sendViaAfricaTalking(payload);
-    case 'twilio':
-      return sendViaTwilio(payload);
-    case 'http':
-      return sendViaHttp(payload);
-    default:
-      return sendViaConsole(payload);
+async function sendViaWhatsApp({ to, body, code }) {
+  if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_ID) {
+    throw new AppError(
+      500,
+      'sms_not_configured',
+      "WhatsApp (Meta Cloud API) n'est pas configure : WHATSAPP_TOKEN et WHATSAPP_PHONE_ID sont requis",
+    );
+  }
+  const useTemplate = Boolean(env.WHATSAPP_TEMPLATE) && Boolean(code);
+  if (env.WHATSAPP_TEMPLATE && !code) {
+    // Alerte ou notification sans code : un modele exige un parametre, on tente
+    // donc un texte libre (possible dans la fenetre de 24 h seulement).
+    logger.warn({ to }, 'WhatsApp : modele configure mais aucun code a transmettre, envoi en texte libre');
+  }
+  const message = useTemplate
+    ? {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: whatsappNumber(to),
+        type: 'template',
+        template: {
+          name: env.WHATSAPP_TEMPLATE,
+          language: { code: env.WHATSAPP_TEMPLATE_LANG },
+          components: [{ type: 'body', parameters: [{ type: 'text', text: String(code) }] }],
+        },
+      }
+    : {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: whatsappNumber(to),
+        type: 'text',
+        text: { preview_url: false, body },
+      };
+  const res = await fetch(`https://graph.facebook.com/${env.WHATSAPP_API_VERSION}/${env.WHATSAPP_PHONE_ID}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(message),
+  });
+  const text = await res.text().catch(() => '');
+  if (!res.ok) {
+    throw new AppError(502, 'sms_provider_error', `WhatsApp HTTP ${res.status} ${whatsappErrorMessage(text)}`.trim());
+  }
+  const mode = useTemplate ? 'template' : 'text';
+  const providerId = extractProviderId(text);
+  logger.info({ provider: 'whatsapp', mode, providerId }, 'Message WhatsApp envoye');
+  return { ok: true, provider: 'whatsapp', providerId, mode };
+}
+
+/** Canaux disponibles : la cle est la valeur de `SMS_PROVIDER`. */
+const PROVIDERS = {
+  console: sendViaConsole,
+  africastalking: sendViaAfricaTalking,
+  twilio: sendViaTwilio,
+  http: sendViaHttp,
+  whatsapp: sendViaWhatsApp,
+};
+
+/**
+ * Envoie un message par le canal configure.
+ * Si le canal principal echoue, `SMS_FALLBACK_PROVIDER` est essaye une fois
+ * (l'echec est journalise dans les deux cas) : un numero sans WhatsApp ou une
+ * passerelle en panne ne doit jamais empecher une connexion.
+ * @param {{to: string, body: string, code?: string}} payload
+ * @returns {Promise<{ok: boolean, provider: string, providerId?: string, simulated?: boolean, fallback?: boolean}>}
+ */
+export async function sendSms({ to, body, code }) {
+  const payload = { to, body, code };
+  const primary = PROVIDERS[env.SMS_PROVIDER] || sendViaConsole;
+  try {
+    return await primary(payload);
+  } catch (err) {
+    const next = env.SMS_FALLBACK_PROVIDER;
+    const fallback = next && next !== 'none' && next !== env.SMS_PROVIDER ? PROVIDERS[next] : null;
+    if (!fallback) throw err;
+    logger.warn(
+      { err: err.message, from: env.SMS_PROVIDER, to: next, phone: to },
+      'Canal principal en echec : envoi par le canal de secours',
+    );
+    const result = await fallback(payload);
+    return { ...result, fallback: true, primaryFailed: env.SMS_PROVIDER };
   }
 }
 
@@ -235,4 +347,6 @@ export default {
   renderHttpTemplate,
   parseHttpHeaders,
   extractProviderId,
+  whatsappNumber,
+  whatsappErrorMessage,
 };
