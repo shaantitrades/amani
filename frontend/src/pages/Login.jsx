@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.jsx';
 import { t } from '../i18n/index.js';
@@ -27,6 +27,15 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0);
   // Ecran demande avant l'inscription (ex. /ad/<id> recu par un lien partage).
   const from = location.state?.from;
+  // Le clavier du telephone recouvre le bas de l'ecran : des que le champ prend
+  // le focus, on ramene le bloc champ + bouton au centre de la zone visible,
+  // sinon l'action principale reste cachee sous le clavier.
+  const actionsRef = useRef(null);
+  const keepActionsVisible = () => {
+    setTimeout(() => {
+      actionsRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 300);
+  };
 
   useEffect(() => {
     if (countdown <= 0) return undefined;
@@ -82,56 +91,67 @@ export default function Login() {
       {step === 'phone' ? (
         <div className="login">
           <h1 className="login__title">{t(language, 'phone_prompt')}</h1>
-          <Field label="📞" hint={t(language, 'phone_hint')}>
-            <input
-              className="input input--phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={`+${dial} 66 12 34 56`}
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+          {/* Pas d'icone au-dessus du champ : tout l'espace gagne reste au
+              bouton, qui doit demeurer visible quand le clavier s'ouvre. */}
+          <div className="login__actions" ref={actionsRef}>
+            <Field>
+              <input
+                className="input input--phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder={`+${dial} 66 12 34 56`}
+                value={phone}
+                onFocus={keepActionsVisible}
+                onChange={(event) => setPhone(event.target.value)}
+              />
+            </Field>
+            <BigButton
+              icon="✉️"
+              label={busy ? t(language, 'loading') : t(language, 'send_code')}
+              color="green"
+              size="large"
+              disabled={busy || phone.replace(/\D/g, '').length < 8}
+              onClick={requestCode}
             />
-          </Field>
-          <BigButton
-            icon="✉️"
-            label={busy ? t(language, 'loading') : t(language, 'send_code')}
-            color="green"
-            size="large"
-            disabled={busy || phone.replace(/\D/g, '').length < 8}
-            onClick={requestCode}
-          />
+          </div>
+          {/* Aide sous le bouton : utile, mais elle ne doit plus repousser
+              l'action hors de la zone visible. */}
+          <span className="field__hint">{t(language, 'phone_hint')}</span>
         </div>
       ) : (
         <div className="login">
           <h1 className="login__title">{t(language, 'code_prompt')}</h1>
           {devCode ? <p className="login__devcode">Code de test : {devCode}</p> : null}
-          <Field label="🔢">
-            <input
-              className="input input--code"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
+          <div className="login__actions" ref={actionsRef}>
+            <Field>
+              <input
+                className="input input--code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={code}
+                onFocus={keepActionsVisible}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
+              />
+            </Field>
+            <BigButton
+              icon="✅"
+              label={busy ? t(language, 'loading') : t(language, 'verify')}
+              color="green"
+              size="large"
+              disabled={busy || code.length < 4}
+              onClick={verify}
             />
-          </Field>
-          <BigButton
-            icon="✅"
-            label={busy ? t(language, 'loading') : t(language, 'verify')}
-            color="green"
-            size="large"
-            disabled={busy || code.length < 4}
-            onClick={verify}
-          />
-          <BigButton
-            icon="🔁"
-            label={countdown > 0 ? `${t(language, 'resend')} (${countdown})` : t(language, 'resend')}
-            color="grey"
-            disabled={countdown > 0 || busy}
-            onClick={requestCode}
-          />
+            <BigButton
+              icon="🔁"
+              label={countdown > 0 ? `${t(language, 'resend')} (${countdown})` : t(language, 'resend')}
+              color="grey"
+              disabled={countdown > 0 || busy}
+              onClick={requestCode}
+            />
+          </div>
         </div>
       )}
     </div>

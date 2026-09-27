@@ -37,6 +37,7 @@ body {
   margin: 0 auto;
   padding: 0 12px calc(24px + var(--safe-bottom));
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 img {
@@ -1206,6 +1207,15 @@ img {
   font-size: 1.2rem;
   margin: 0;
   text-align: center;
+}
+
+/* Bloc champ + bouton d'action : regroupe ce qui doit rester visible quand le
+   clavier du telephone s'ouvre (le scroll-into-view vise ce bloc). */
+.login__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-margin-bottom: 12px;
 }
 
 .login__devcode {
