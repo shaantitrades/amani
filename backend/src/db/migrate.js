@@ -60,6 +60,26 @@ export async function runMigrations({ log = logger } = {}) {
 }
 
 const isDirectRun = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+/**
+ * Aide lisible pour les echecs de connexion les plus frequents au demarrage.
+ * Sans elle, le conteneur `api` sort en laissant un 502 opaque cote Nginx.
+ * @returns {string|null}
+ */
+export function startupHint(err) {
+  const message = String(err?.message || err || '');
+  if (/password authentication failed|SASL|client password must be a string|no password supplied/i.test(message)) {
+    return "Postgres refuse le mot de passe. Il doit etre identique a celui utilise lors de la creation du volume db-data : soit remettre l'ancien POSTGRES_PASSWORD, soit supprimer le volume db-data (donnees de recette) puis redeployer.";
+  }
+  if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN/i.test(message)) {
+    return 'Postgres est injoignable : verifier que le service db est demarre et que DATABASE_URL pointe vers db:5432.';
+  }
+  if (/invalid url|URI malformed|percent-encoding|URIError/i.test(message)) {
+    return "DATABASE_URL est invalide : le mot de passe contient probablement +, /, = ou @ (typique d'openssl rand -base64). Utiliser un mot de passe hexadecimal : openssl rand -hex 24.";
+  }
+  return null;
+}
+
 if (isDirectRun) {
   runMigrations()
     .then(async (executed) => {
@@ -68,7 +88,10 @@ if (isDirectRun) {
       process.exit(0);
     })
     .catch(async (err) => {
-      logger.error({ err: err.message }, 'Echec de la migration');
+      logger.error(
+        { err: err.message, hint: startupHint(err) },
+        "Echec de la migration (l'API ne demarrera pas)",
+      );
       await pool.end().catch(() => {});
       process.exit(1);
     });

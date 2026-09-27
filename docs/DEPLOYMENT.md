@@ -45,7 +45,7 @@ et remplacez les valeurs manquantes :
 ```bash
 # sur votre machine
 openssl rand -hex 32        # -> JWT_SECRET
-openssl rand -base64 24     # -> POSTGRES_PASSWORD
+openssl rand -hex 24        # -> POSTGRES_PASSWORD (hexadecimal obligatoire, voir ci-dessous)
 npx web-push generate-vapid-keys   # -> VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (si push PWA)
 ```
 
@@ -215,6 +215,8 @@ d'entree.
 | Page blanche, requetes `/api/v1/...` en 404 depuis le site | Domaine bien sur `web`, mais conteneur `api` arrete ou migrations en echec | Logs du service `api` (variables `POSTGRES_*`, `DATABASE_URL` construite par le compose) |
 | `/healthz` repond `ok` mais **tous** les appels `/api/v1/...` renvoient **502 Bad Gateway** (page Nginx) | Le conteneur `api` n'ecoute pas : demarrage en echec (`[bodogui] Configuration invalide` — `JWT_SECRET` trop court, `DATABASE_URL`…), migrations en erreur, ou `db`/`redis` jamais `healthy` (le compose exige `condition: service_healthy`) | Coolify > service `api` > **Logs** (chercher `Configuration invalide` ou une erreur Postgres) ; verifier l'etat de `db` et `redis` ; depuis le terminal du service `web` : `wget -qO- http://api:4000/healthz` (reponse JSON attendue = reseau OK, l'API est en cause ; echec DNS ou connexion refusee = conteneur arrete) |
 | Le site affiche une erreur de connexion alors que `curl` fonctionne (logs du service `api` : `Origine non autorisee : http://...`) | `CORS_ORIGINS` vide ou ne contenant pas l'origine exacte du site (protocole + domaine, sans slash final) | Mettre l'URL exacte du site dans `CORS_ORIGINS` puis redeployer `api` (une liste vide accepte tout, mais un domaine errone bloque le navigateur) |
+| Logs du service `api` : `password authentication failed` puis conteneur arrete (donc 502 partout) | `POSTGRES_PASSWORD` ne correspond pas a celui qui a cree le volume `db-data` (mot de passe modifie apres le premier deploiement), ou il contient `+`, `/`, `=` ou `@` (genere avec `openssl rand -base64`) et casse `DATABASE_URL` construite par le compose | Remettre l'ancien mot de passe, ou supprimer le volume `db-data` (donnees de recette) puis redeployer ; toujours generer un mot de passe **hexadecimal** (`openssl rand -hex 24`) |
+| Logs du service `api` : `[bodogui] Configuration invalide ... JWT_SECRET` | Le compose verifie seulement la **presence** de `JWT_SECRET`, pas sa longueur (16 caracteres minimum exiges par l'API) | `JWT_SECRET` = `openssl rand -hex 32` puis redeployer |
 | `web` refuse de demarrer : `port is already allocated` | Un `ports: '80:80'` a ete (re)ajoute dans `docker-compose.yml` | Garder `expose: '80'` : Traefik, installe par Coolify, publie deja 80/443 sur l'hote |
 | Les SMS renvoient vers un mauvais lien | `PUBLIC_WEB_URL` / `PUBLIC_API_URL` pas mises a jour | Mettre l'URL publique reelle (domaine Coolify ou domaine definitif) avant de tester les SMS |
 | « Code incorrect » alors qu'aucun SMS n'arrive | Passerelle SMS non configuree (`SMS_PROVIDER=africastalking` sans identifiants) : le code est bien cree, mais jamais envoye | `SMS_PROVIDER=console` (le code apparait dans les logs du service `api`) ou connexion de test `TEST_LOGIN_PHONES` + `TEST_LOGIN_CODE` (voir § 7) |
